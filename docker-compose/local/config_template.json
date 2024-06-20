@@ -1,0 +1,49 @@
+{
+  "routes": {},
+  "models": {
+    "gpt-4": {
+      "type": "chat",
+      "displayName": "GPT-4",
+      "displayVersion": "Latest",
+      "description": "Alias for latest stable version (0613)",
+      "tokenizerModel": "gpt-4-0314",
+      "iconUrl": "http://localhost:3001/gpt4.svg",
+      "endpoint": "http://adapter-dial:5000/openai/deployments/gpt-4/chat/completions",
+      "forwardAuthToken": true,
+      "upstreams": [
+        {
+          "endpoint": "${REMOTE_DIAL_URL}/openai/deployments/gemini-pro-vision/chat/completions",
+          "key": "${REMOTE_DIAL_API_KEY}"
+        }
+      ]
+    }
+  },
+  "applications": {
+    "local-application": {
+      "displayName": "Locally hosted application",
+      "endpoint": "http://host.docker.internal:5005/openai/deployments/app/chat/completions",
+      "forwardAuthToken": true,
+      "inputAttachmentTypes": [
+        "*/*"
+      ],
+      "features": {
+        "urlAttachmentsSupported": true,
+        "folderAttachmentsSupported": true
+      }
+    }
+  },
+  "keys": {
+    "dial_api_key": {
+      "project": "TEST-PROJECT",
+      "role": "default"
+    }
+  },
+  "roles": {
+    "default": {
+      "limits": {
+        "gpt-4": {},
+        "local-application": {}
+      }
+    }
+  }
+}
