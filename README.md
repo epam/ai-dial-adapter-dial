@@ -1,4 +1,4 @@
-# OpenAI Adapter DIAL
+# DIAL Adapter for DIAL
 
 ## Overview
 
