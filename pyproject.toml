@@ -1,0 +1,92 @@
+[tool.poetry]
+name = "aidial-adapter-dial"
+version = "0.1.0"
+description = "DIAL application which adapts one DIAL Core to another DIAL Core"
+authors = ["EPAM RAIL <SpecialEPM-DIALDevTeam@epam.com>"]
+homepage = "https://epam-rail.com"
+documentation = "https://epam-rail.com/dial_api"
+license = "Apache-2.0"
+readme = "README.md"
+keywords = ["ai"]
+classifiers = [
+    "Topic :: Software Development :: Libraries :: Python Modules"
+]
+repository = "https://github.com/epam/ai-dial-adapter-dial"
+
+[tool.poetry.scripts]
+clean = "scripts.clean:main"
+
+[pytest]
+env_files = [".env"]
+
+[tool.poetry.dependencies]
+python = ">=3.11,<3.13"
+fastapi = "0.109.2"
+uvicorn = "0.23"
+aiohttp = "3.9.5"
+openai = "1.32.0" # NOTE: used solely for chat completion response types
+pydantic = "^1.10.12"
+aidial-sdk = {version = "^0.8.0", extras = ["telemetry"]}
+
+[tool.poetry.group.test.dependencies]
+pytest = "7.4.0"
+pytest-asyncio = "0.21.1"
+python-dotenv = "1.0.0"
+respx = "^0.21.1"
+
+[tool.poetry.group.lint.dependencies]
+pyright = "1.1.324"
+black = "24.3.0"
+isort = "5.12.0"
+autoflake = "2.2.0"
+flake8 = "6.0.0"
+
+[tool.poetry.group.dev.dependencies]
+nox = "^2023.4.22"
+
+[tool.pytest.ini_options]
+testpaths = [
+    "tests"
+]
+# muting warnings coming from opentelemetry package
+filterwarnings = [
+    "ignore::DeprecationWarning:opentelemetry.instrumentation.dependencies"
+]
+
+[tool.pyright]
+typeCheckingMode = "basic"
+reportUnusedVariable = "error"
+reportIncompatibleMethodOverride = "error"
+exclude = [
+    ".git",
+    ".venv",
+    ".nox",
+    "**/__pycache__",
+    "docker-compose"
+]
+
+[tool.black]
+line-length = 80
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | \.nox
+  | \.__pycache__
+)/
+'''
+
+[tool.isort]
+line_length = 80
+profile = "black"
+
+[tool.autoflake]
+ignore_init_module_imports = true
+remove_all_unused_imports = true
+in_place = true
+recursive = true
+quiet = true
+exclude = [
+    "\\.venv",
+    "\\.nox",
+]
