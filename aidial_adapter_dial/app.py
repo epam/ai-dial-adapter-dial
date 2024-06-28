@@ -123,7 +123,7 @@ class AzureClient(BaseModel):
         )
 
 
-@app.post("/openai/deployments/{deployment_id}/embeddings")
+@app.post("/openai/deployments/{deployment_id:path}/embeddings")
 @dial_exception_decorator
 async def embeddings_proxy(request: Request, deployment_id: str):
     body = await request.json()
@@ -136,7 +136,7 @@ async def embeddings_proxy(request: Request, deployment_id: str):
     return response.to_dict()
 
 
-@app.post("/openai/deployments/{deployment_id}/chat/completions")
+@app.post("/openai/deployments/{deployment_id:path}/chat/completions")
 @dial_exception_decorator
 async def chat_completions_proxy(request: Request, deployment_id: str):
 
