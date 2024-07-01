@@ -17,6 +17,7 @@ from aidial_adapter_dial.utils.exceptions import (
     HTTPException,
     dial_exception_decorator,
 )
+from aidial_adapter_dial.utils.http_client import get_http_client
 from aidial_adapter_dial.utils.log_config import configure_loggers
 from aidial_adapter_dial.utils.reflection import call_with_extra_body
 from aidial_adapter_dial.utils.sse_stream import to_openai_sse_stream
@@ -103,7 +104,7 @@ class AzureClient(BaseModel):
             base_url=upstream_endpoint,
             api_key=remote_dial_api_key,
             api_version=query_params.get("api-version"),
-            timeout=DEFAULT_TIMEOUT,
+            http_client=get_http_client(),
         )
 
         attachment_transformer = await AttachmentTransformer.create(
