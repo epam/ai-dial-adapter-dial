@@ -12,7 +12,7 @@
       "forwardAuthToken": true,
       "upstreams": [
         {
-          "endpoint": "${REMOTE_DIAL_URL}/openai/deployments/gemini-pro-vision/chat/completions",
+          "endpoint": "${REMOTE_DIAL_URL}/openai/deployments/gpt-4/chat/completions",
           "key": "${REMOTE_DIAL_API_KEY}"
         }
       ]
