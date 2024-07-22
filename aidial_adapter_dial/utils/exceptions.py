@@ -117,7 +117,9 @@ def dial_exception_decorator(func):
         try:
             return await func(*args, **kwargs)
         except Exception as e:
-            log.exception(e)
+            log.exception(
+                f"caught exception: {type(e).__module__}.{type(e).__name__}"
+            )
             dial_exception = to_dial_exception(e)
             raise to_starlette_exception(dial_exception) from e
 

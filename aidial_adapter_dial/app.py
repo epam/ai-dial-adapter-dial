@@ -12,6 +12,7 @@ from openai.types.chat.chat_completion import ChatCompletion
 from openai.types.chat.chat_completion_chunk import ChatCompletionChunk
 
 from aidial_adapter_dial.transformer import AttachmentTransformer
+from aidial_adapter_dial.utils.dict import censor_ci_dict
 from aidial_adapter_dial.utils.env import get_env
 from aidial_adapter_dial.utils.exceptions import (
     HTTPException,
@@ -68,7 +69,10 @@ class AzureClient(BaseModel):
 
         if is_debug:
             log.debug(f"request.body: {body}")
-            log.debug(f"request.headers: {headers}")
+            secret_headers = ["api-key", "authorization", UPSTREAM_KEY_HEADER]
+            log.debug(
+                f"request.headers: {censor_ci_dict(headers, secret_headers)}"
+            )
             log.debug(f"request.params: {query_params}")
 
         local_dial_api_key = headers.get("api-key", None)
