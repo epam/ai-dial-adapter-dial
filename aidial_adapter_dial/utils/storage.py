@@ -72,12 +72,11 @@ class FileStorage(BaseModel):
     ) -> bool:
         try:
             await self._get_metadata(url, session)
+            log.debug(f"file is accessible: url={url!r}")
+            return True
         except AccessDeniedError:
             log.debug(f"file isn't accessible: url={url!r}")
             return False
-        finally:
-            log.debug(f"file is accessible: url={url!r}")
-            return True
 
     def to_metadata_url(self, url: str) -> str:
         """
