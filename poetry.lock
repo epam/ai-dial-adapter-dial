@@ -2,22 +2,23 @@
 
 [[package]]
 name = "aidial-sdk"
-version = "0.8.0"
+version = "0.9.0"
 description = "Framework to create applications and model adapters for AI DIAL"
 optional = false
 python-versions = "<4.0,>=3.8.1"
 files = [
-    {file = "aidial_sdk-0.8.0-py3-none-any.whl", hash = "sha256:8c13858746975e17082e8c59480812771c2d75a2b3dd432c21297739a40b916f"},
-    {file = "aidial_sdk-0.8.0.tar.gz", hash = "sha256:9ad1f3f6fbcb9b55e76b00b22fda52ca4b1ac9c5f60b2a035dd9ef2eb8593c9c"},
+    {file = "aidial_sdk-0.9.0-py3-none-any.whl", hash = "sha256:4353737f4b3ab2b41461303fca26a718564921d5c25fa8829e09dacab357a976"},
+    {file = "aidial_sdk-0.9.0.tar.gz", hash = "sha256:ab611ed46c18ab07fb8584549f9c698599ad8e88ed22a67260c42c0b44eca0c0"},
 ]
 
 [package.dependencies]
 aiohttp = ">=3.8.3,<4.0.0"
 fastapi = ">=0.51,<1.0"
+httpx = ">=0.25.0,<0.26.0"
 opentelemetry-api = {version = "1.20.0", optional = true, markers = "extra == \"telemetry\""}
 opentelemetry-distro = {version = "0.41b0", optional = true, markers = "extra == \"telemetry\""}
 opentelemetry-exporter-otlp-proto-grpc = {version = "1.20.0", optional = true, markers = "extra == \"telemetry\""}
-opentelemetry-exporter-prometheus = {version = "1.12.0rc1", optional = true, markers = "extra == \"telemetry\""}
+opentelemetry-exporter-prometheus = {version = "0.41b0", optional = true, markers = "extra == \"telemetry\""}
 opentelemetry-instrumentation = {version = "0.41b0", optional = true, markers = "extra == \"telemetry\""}
 opentelemetry-instrumentation-aiohttp-client = {version = "0.41b0", optional = true, markers = "extra == \"telemetry\""}
 opentelemetry-instrumentation-fastapi = {version = "0.41b0", optional = true, markers = "extra == \"telemetry\""}
@@ -34,7 +35,7 @@ uvicorn = ">=0.19,<1.0"
 wrapt = ">=1.14,<2.0"
 
 [package.extras]
-telemetry = ["opentelemetry-api (==1.20.0)", "opentelemetry-distro (==0.41b0)", "opentelemetry-exporter-otlp-proto-grpc (==1.20.0)", "opentelemetry-exporter-prometheus (==1.12.0rc1)", "opentelemetry-instrumentation (==0.41b0)", "opentelemetry-instrumentation-aiohttp-client (==0.41b0)", "opentelemetry-instrumentation-fastapi (==0.41b0)", "opentelemetry-instrumentation-httpx (==0.41b0)", "opentelemetry-instrumentation-logging (==0.41b0)", "opentelemetry-instrumentation-requests (==0.41b0)", "opentelemetry-instrumentation-system-metrics (==0.41b0)", "opentelemetry-instrumentation-urllib (==0.41b0)", "opentelemetry-sdk (==1.20.0)", "prometheus-client (==0.17.1)"]
+telemetry = ["opentelemetry-api (==1.20.0)", "opentelemetry-distro (==0.41b0)", "opentelemetry-exporter-otlp-proto-grpc (==1.20.0)", "opentelemetry-exporter-prometheus (==0.41b0)", "opentelemetry-instrumentation (==0.41b0)", "opentelemetry-instrumentation-aiohttp-client (==0.41b0)", "opentelemetry-instrumentation-fastapi (==0.41b0)", "opentelemetry-instrumentation-httpx (==0.41b0)", "opentelemetry-instrumentation-logging (==0.41b0)", "opentelemetry-instrumentation-requests (==0.41b0)", "opentelemetry-instrumentation-system-metrics (==0.41b0)", "opentelemetry-instrumentation-urllib (==0.41b0)", "opentelemetry-sdk (==1.20.0)", "prometheus-client (==0.17.1)"]
 
 [[package]]
 name = "aiohttp"
@@ -1025,18 +1026,18 @@ test = ["pytest-grpc"]
 
 [[package]]
 name = "opentelemetry-exporter-prometheus"
-version = "1.12.0rc1"
+version = "0.41b0"
 description = "Prometheus Metric Exporter for OpenTelemetry"
 optional = false
-python-versions = ">=3.6"
+python-versions = ">=3.7"
 files = [
-    {file = "opentelemetry-exporter-prometheus-1.12.0rc1.tar.gz", hash = "sha256:f10c6c243d69d5b63f755885b36a4ce8ef2cdf3e737c4e6bf00f32e87668f0a9"},
-    {file = "opentelemetry_exporter_prometheus-1.12.0rc1-py3-none-any.whl", hash = "sha256:1f0c8f93d62e1575313966ceb8abf11e9a46e1839fda9ee4269b06d40494280f"},
+    {file = "opentelemetry_exporter_prometheus-0.41b0-py3-none-any.whl", hash = "sha256:ca996f3bc15b0cbf3abd798e786095a202650202a5c0edd9e34bb9186a247b79"},
+    {file = "opentelemetry_exporter_prometheus-0.41b0.tar.gz", hash = "sha256:0cc58d5d10040e69090637803b97e120f558467037c88988742c80a627e7f1ed"},
 ]
 
 [package.dependencies]
-opentelemetry-api = ">=1.10.0"
-opentelemetry-sdk = ">=1.10.0"
+opentelemetry-api = ">=1.12,<2.0"
+opentelemetry-sdk = ">=1.12,<2.0"
 prometheus-client = ">=0.5.0,<1.0.0"
 
 [[package]]
@@ -1883,4 +1884,4 @@ test = ["big-O", "jaraco.functools", "jaraco.itertools", "jaraco.test", "more-it
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<3.13"
-content-hash = "48ef9a6dedb8f84f194f73357c279b2e77ac648a4dc82e89910fe1131b055aea"
+content-hash = "d24e9dfbf6519fdf60177e19e39d7fdce1bb304f100c60509e14e9911e8158e4"

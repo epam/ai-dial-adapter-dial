@@ -26,7 +26,7 @@ uvicorn = "0.23"
 aiohttp = "3.9.5"
 openai = "1.32.0" # NOTE: used solely for chat completion response types
 pydantic = "^1.10.12"
-aidial-sdk = {version = "^0.8.0", extras = ["telemetry"]}
+aidial-sdk = {version = "^0.9.0", extras = ["telemetry"]}
 respx = "^0.21.1"
 
 [tool.poetry.group.test.dependencies]
