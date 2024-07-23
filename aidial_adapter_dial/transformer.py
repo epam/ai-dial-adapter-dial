@@ -97,53 +97,61 @@ class AttachmentTransformer(BaseModel):
             return f"files/{self.local_app_data}/{path}"
 
     async def modify_request_attachment(self, attachment: dict) -> None:
-        if "url" not in attachment:
-            return None
+        if (ref_url := attachment.get("reference_url")) and (
+            local_ref_url := self.local_storage.to_dial_url(ref_url)
+        ):
+            try:
+                remote_ref_url = await self.get_remote_url(local_ref_url)
+                attachment["reference_url"] = remote_ref_url
+            except Exception:
+                log.error(f"Failed to get remote URL for {local_ref_url!r}")
 
-        local_url = self.local_storage.to_dial_url(attachment["url"])
-        if local_url is None:
-            return None
+        if (url := attachment.get("url")) and (
+            local_url := self.local_storage.to_dial_url(url)
+        ):
+            remote_url = await self.get_remote_url(local_url)
 
-        remote_url = await self.get_remote_url(local_url)
-        content_type = attachment.get("type")
+            await download_and_upload_file(
+                self.local_storage,
+                local_url,
+                self.remote_storage,
+                remote_url,
+                attachment.get("type"),
+            )
 
-        await download_and_upload_file(
-            self.local_storage,
-            local_url,
-            self.remote_storage,
-            remote_url,
-            content_type,
-        )
+            attachment["url"] = remote_url
 
-        attachment["url"] = remote_url
-
-        log.debug(
-            f"uploaded from local to remote: from {local_url!r} to {remote_url!r}"
-        )
+            log.debug(
+                f"uploaded from local to remote: from {local_url!r} to {remote_url!r}"
+            )
 
     async def modify_response_attachment(self, attachment: dict) -> None:
-        if "url" not in attachment:
-            return None
+        if (ref_url := attachment.get("reference_url")) and (
+            remote_ref_url := self.remote_storage.to_dial_url(ref_url)
+        ):
+            try:
+                local_ref_url = await self.get_local_url(remote_ref_url)
+                attachment["reference_url"] = local_ref_url
+            except Exception:
+                log.error(f"Failed to get local URL for {remote_ref_url!r}")
 
-        remote_url = self.remote_storage.to_dial_url(attachment["url"])
-        if remote_url is None:
-            return None
+        if (url := attachment.get("url")) and (
+            remote_url := self.remote_storage.to_dial_url(url)
+        ):
+            local_url = await self.get_local_url(remote_url)
 
-        local_url = await self.get_local_url(remote_url)
-        content_type = attachment.get("type")
+            await download_and_upload_file(
+                self.remote_storage,
+                remote_url,
+                self.local_storage,
+                local_url,
+                attachment.get("type"),
+            )
+            attachment["url"] = local_url
 
-        await download_and_upload_file(
-            self.remote_storage,
-            remote_url,
-            self.local_storage,
-            local_url,
-            content_type,
-        )
-        attachment["url"] = local_url
-
-        log.debug(
-            f"uploaded from remote to local: from {remote_url!r} to {local_url!r}"
-        )
+            log.debug(
+                f"uploaded from remote to local: from {remote_url!r} to {local_url!r}"
+            )
 
     async def modify_request(self, request: dict) -> dict:
         if "messages" in request:

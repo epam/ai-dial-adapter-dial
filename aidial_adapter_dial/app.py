@@ -96,6 +96,8 @@ class AzureClient(BaseModel):
                 message=f"The {UPSTREAM_ENDPOINT_HEADER!r} request header is missing",
             )
 
+        # NOTE: it's not really necessary for the endpoint to point to the same deployment id.
+        # Here we just follow the convention used in OpenAI adapter.
         endpoint_suffix = f"/{deployment_id}/{endpoint_name}"
         if not upstream_endpoint.endswith(endpoint_suffix):
             raise HTTPException(
