@@ -6,7 +6,7 @@ from aidial_sdk.telemetry.init import init_telemetry
 from aidial_sdk.telemetry.types import TelemetryConfig
 from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse
-from openai import AsyncAzureOpenAI, AsyncStream, BaseModel, Timeout
+from openai import AsyncAzureOpenAI, AsyncStream, BaseModel
 from openai.types import CreateEmbeddingResponse
 from openai.types.chat.chat_completion import ChatCompletion
 from openai.types.chat.chat_completion_chunk import ChatCompletionChunk
@@ -41,8 +41,6 @@ UPSTREAM_KEY_HEADER = "X-UPSTREAM-KEY"
 UPSTREAM_ENDPOINT_HEADER = "X-UPSTREAM-ENDPOINT"
 
 LOCAL_DIAL_URL = get_env("DIAL_URL")
-
-DEFAULT_TIMEOUT = Timeout(600, connect=10)
 
 
 def get_hostname(url: str) -> str:
