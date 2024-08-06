@@ -14,10 +14,12 @@ log = logging.getLogger(__name__)
 class AttachmentTransformer(BaseModel):
     local_storage: FileStorage
     local_user_bucket: str
-    local_app_data: str
+    local_appdata: str
 
     remote_storage: FileStorage
     remote_user_bucket: str
+
+    proxy_mode: bool
 
     @classmethod
     async def create(
@@ -34,21 +36,41 @@ class AttachmentTransformer(BaseModel):
             local_user_bucket = AppData.parse(local_appdata).user_bucket
 
             remote = await remote_storage.get_bucket(session)
+            remote_appdata = remote.get("appdata")
+            if remote_appdata is None:
+                remote_user_bucket = remote["bucket"]
+            else:
+                remote_user_bucket = AppData.parse(remote_appdata).user_bucket
+
+        proxy_mode = (
+            remote_storage.dial_url == local_storage.dial_url
+            and remote_storage.api_key == local_storage.api_key
+        )
+
+        log.debug(f"proxy_mode: {proxy_mode}")
 
         return cls(
             remote_storage=remote_storage,
-            remote_user_bucket=remote["bucket"],
+            remote_user_bucket=remote_user_bucket,
             local_storage=local_storage,
             local_user_bucket=local_user_bucket,
-            local_app_data=local_appdata,
+            local_appdata=local_appdata,
+            proxy_mode=proxy_mode,
         )
 
     def get_remote_url(self, local_url: str) -> str:
         """
         user/app files:
-            < files/LOCAL_USER_BUCKET/PATH
-            > files/REMOTE_USER_BUCKET/LOCAL_USER_BUCKET/PATH
+            if proxy_mode:
+                < files/LOCAL_USER_BUCKET/PATH
+                > files/REMOTE_USER_BUCKET/PATH
+            else:
+                < files/LOCAL_USER_BUCKET/PATH
+                > files/REMOTE_USER_BUCKET/LOCAL_USER_BUCKET/PATH
         """
+
+        if self.proxy_mode:
+            return local_url
 
         if not local_url.startswith(f"files/{self.local_user_bucket}/"):
             raise ValueError(f"Unexpected local URL: {local_url!r}")
@@ -58,8 +80,12 @@ class AttachmentTransformer(BaseModel):
     def get_local_url(self, remote_url: str) -> str:
         """
         user/app files uploaded from local to remote earlier (reverse of get_remote_url):
-            < files/REMOTE_USER_BUCKET/LOCAL_USER_BUCKET/PATH
-            > files/LOCAL_USER_BUCKET/PATH
+            if proxy_mode:
+                < files/REMOTE_USER_BUCKET/PATH
+                > files/LOCAL_USER_BUCKET/PATH
+            else:
+                < files/REMOTE_USER_BUCKET/LOCAL_USER_BUCKET/PATH
+                > files/LOCAL_USER_BUCKET/PATH
 
         created by remote (user):
             < files/REMOTE_USER_BUCKET/appdata/REMOTE_APP_NAME/PATH
@@ -82,19 +108,26 @@ class AttachmentTransformer(BaseModel):
             f"files/{self.remote_user_bucket}/"
         )
 
-        if remote_path.startswith(f"{self.local_user_bucket}/"):
-            path = remote_path.removeprefix(f"{self.local_user_bucket}/")
-            return f"files/{self.local_user_bucket}/{path}"
-        else:
+        if remote_path.startswith("appdata/"):
             regex = r"appdata/([^/]+)/(.+)"
             match = re.match(regex, remote_path)
             if match is None:
-                raise ValueError(
-                    f"The remote file ({remote_url!r}) is expected to be uploaded to a remote appdata path"
-                )
+                raise ValueError(f"Invalid remote appdata path: {remote_url!r}")
             _remote_app_name, path = match.groups()
+            return f"files/{self.local_appdata}/{path}"
 
-            return f"files/{self.local_app_data}/{path}"
+        if not self.proxy_mode:
+            if remote_path.startswith(f"{self.local_user_bucket}/"):
+                path = remote_path.removeprefix(f"{self.local_user_bucket}/")
+                return f"files/{self.local_user_bucket}/{path}"
+
+            raise ValueError(
+                f"The remote file ({remote_url!r}) is expected to be uploaded either "
+                "to remote appdata path or "
+                "to a local user bucket subpath of remote user bucket."
+            )
+        else:
+            return remote_url
 
     async def modify_request_attachment(self, attachment: dict) -> None:
         if (ref_url := attachment.get("reference_url")) and (
@@ -188,9 +221,15 @@ async def download_and_upload_file(
     dest_url: str,
     content_type: str | None,
 ):
-    async with aiohttp.ClientSession() as session:
-        content = await src_storage.download(src_url, session)
-        await dest_storage.upload(dest_url, content_type, content, session)
+    log.debug(f"downloading from {src_url!r} and uploading to {dest_url!r}")
+
+    if src_url != dest_url:
+        if _is_directory(src_url):
+            raise ValueError("Directories aren't yet supported")
+
+        async with aiohttp.ClientSession() as session:
+            content = await src_storage.download(src_url, session)
+            await dest_storage.upload(dest_url, content_type, content, session)
 
 
 async def modify_message(
@@ -205,3 +244,7 @@ async def modify_message(
         return
     for attachment in attachments:
         await modify_attachment(attachment)
+
+
+def _is_directory(url: str) -> bool:
+    return url[-1] == "/"
