@@ -6,7 +6,7 @@ from aidial_sdk.telemetry.init import init_telemetry
 from aidial_sdk.telemetry.types import TelemetryConfig
 from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse
-from openai import AsyncAzureOpenAI, AsyncStream, BaseModel, Timeout
+from openai import AsyncAzureOpenAI, AsyncStream, BaseModel
 from openai.types import CreateEmbeddingResponse
 from openai.types.chat.chat_completion import ChatCompletion
 from openai.types.chat.chat_completion_chunk import ChatCompletionChunk
@@ -41,8 +41,6 @@ UPSTREAM_KEY_HEADER = "X-UPSTREAM-KEY"
 UPSTREAM_ENDPOINT_HEADER = "X-UPSTREAM-ENDPOINT"
 
 LOCAL_DIAL_URL = get_env("DIAL_URL")
-
-DEFAULT_TIMEOUT = Timeout(600, connect=10)
 
 
 def get_hostname(url: str) -> str:
@@ -96,6 +94,8 @@ class AzureClient(BaseModel):
                 message=f"The {UPSTREAM_ENDPOINT_HEADER!r} request header is missing",
             )
 
+        # NOTE: it's not really necessary for the endpoint to point to the same deployment id.
+        # Here we just follow the convention used in OpenAI adapter.
         endpoint_suffix = f"/{deployment_id}/{endpoint_name}"
         if not upstream_endpoint.endswith(endpoint_suffix):
             raise HTTPException(

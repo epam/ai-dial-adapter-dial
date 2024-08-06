@@ -73,6 +73,7 @@ exclude = '''
   | \.venv
   | \.nox
   | \.__pycache__
+  | docker-compose\/local\/core-data
 )/
 '''
 

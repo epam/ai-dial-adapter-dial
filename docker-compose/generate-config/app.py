@@ -217,7 +217,7 @@ def process_data(
 
         model = {
             "type": model_type,
-            "displayName": item.display_name,
+            "displayName": f"{item.display_name} (Adapter)",
             "displayVersion": item.display_version,
             "description": item.description,
             "tokenizerModel": item.tokenizer_model,
@@ -278,9 +278,12 @@ def process_data(
             },
         }
 
-        # Note that even applications are declared as models,
-        # because only models have "upstreams" property.
-        config.add_model(item.id, model)
+        # Note that
+        # * even applications are declared as models,
+        #   because only models have "upstreams" property.
+        # * the local deployment id is different from the remote deployment id
+        #   to highlight that the two are not required to be the same.
+        config.add_model(f"{item.id}-adapter", model)
 
 
 if __name__ == "__main__":
