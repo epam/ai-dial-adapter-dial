@@ -43,7 +43,7 @@ class AttachmentTransformer(BaseModel):
             local_app_data=local_appdata,
         )
 
-    async def get_remote_url(self, local_url: str) -> str:
+    def get_remote_url(self, local_url: str) -> str:
         """
         user/app files:
             < files/LOCAL_USER_BUCKET/PATH
@@ -55,7 +55,7 @@ class AttachmentTransformer(BaseModel):
 
         return f"files/{self.remote_user_bucket}/{local_url.removeprefix('files/')}"
 
-    async def get_local_url(self, remote_url: str) -> str:
+    def get_local_url(self, remote_url: str) -> str:
         """
         user/app files uploaded from local to remote earlier (reverse of get_remote_url):
             < files/REMOTE_USER_BUCKET/LOCAL_USER_BUCKET/PATH
@@ -100,16 +100,13 @@ class AttachmentTransformer(BaseModel):
         if (ref_url := attachment.get("reference_url")) and (
             local_ref_url := self.local_storage.to_dial_url(ref_url)
         ):
-            try:
-                remote_ref_url = await self.get_remote_url(local_ref_url)
-                attachment["reference_url"] = remote_ref_url
-            except Exception:
-                log.error(f"Failed to get remote URL for {local_ref_url!r}")
+            remote_ref_url = self.get_remote_url(local_ref_url)
+            attachment["reference_url"] = remote_ref_url
 
         if (url := attachment.get("url")) and (
             local_url := self.local_storage.to_dial_url(url)
         ):
-            remote_url = await self.get_remote_url(local_url)
+            remote_url = self.get_remote_url(local_url)
 
             await download_and_upload_file(
                 self.local_storage,
@@ -129,16 +126,13 @@ class AttachmentTransformer(BaseModel):
         if (ref_url := attachment.get("reference_url")) and (
             remote_ref_url := self.remote_storage.to_dial_url(ref_url)
         ):
-            try:
-                local_ref_url = await self.get_local_url(remote_ref_url)
-                attachment["reference_url"] = local_ref_url
-            except Exception:
-                log.error(f"Failed to get local URL for {remote_ref_url!r}")
+            local_ref_url = self.get_local_url(remote_ref_url)
+            attachment["reference_url"] = local_ref_url
 
         if (url := attachment.get("url")) and (
             remote_url := self.remote_storage.to_dial_url(url)
         ):
-            local_url = await self.get_local_url(remote_url)
+            local_url = self.get_local_url(remote_url)
 
             await download_and_upload_file(
                 self.remote_storage,
