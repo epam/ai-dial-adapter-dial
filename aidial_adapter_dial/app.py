@@ -119,7 +119,14 @@ class AzureClient(BaseModel):
         client = AsyncAzureOpenAI(
             base_url=upstream_endpoint,
             api_key=remote_dial_api_key,
-            api_version=query_params.get("api-version"),
+            # NOTE: defaulting missing api-version to an empty string, because
+            # 1. openai library doesn't allow for a missing api-version
+            # and a workaround for it would be a recreation of AsyncAzureOpenAI with a check disabled:
+            # https://gitlab.deltixhub.com/Deltix/openai-apps/dial-interceptor-example/-/blob/62760a4c7a7be740b1c2bc60f14a0a568f31a0bc/aidial_interceptor_example/utils/azure.py#L1-5
+            # 2. OpenAI adapter treats a missing api-version in the same way as an empty string and that's the only
+            # place where api-version has any meaning, so the query param modification is safe.
+            # https://github.com/epam/ai-dial-adapter-openai/blob/b462d1c26ce8f9d569b9c085a849206aad91becf/aidial_adapter_openai/app.py#L93
+            api_version=query_params.get("api-version") or "",
             http_client=get_http_client(),
         )
 
