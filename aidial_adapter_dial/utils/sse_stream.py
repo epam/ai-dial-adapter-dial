@@ -1,7 +1,12 @@
 import json
+import logging
 from typing import Any, AsyncIterator, Mapping
 
-from aidial_adapter_dial.utils.exceptions import create_error
+from aidial_adapter_dial.utils.exceptions import (
+    create_error,
+    to_dial_exception,
+    to_starlette_exception,
+)
 
 DATA_PREFIX = "data: "
 OPENAI_END_MARKER = "[DONE]"
@@ -54,9 +59,22 @@ async def parse_openai_sse_stream(
         yield chunk
 
 
+log = logging.getLogger(__name__)
+
+
 async def to_openai_sse_stream(
     stream: AsyncIterator[dict],
 ) -> AsyncIterator[str]:
-    async for chunk in stream:
-        yield format_chunk(chunk)
-    yield END_CHUNK
+    try:
+        async for chunk in stream:
+            yield format_chunk(chunk)
+        yield END_CHUNK
+    except Exception as e:
+        log.exception(
+            f"caught exception while streaming: {type(e).__module__}.{type(e).__name__}"
+        )
+
+        dial_exception = to_dial_exception(e)
+        starlette_exception = to_starlette_exception(dial_exception)
+
+        yield format_chunk(starlette_exception.detail)

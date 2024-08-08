@@ -57,9 +57,7 @@ class AzureClient(BaseModel):
         arbitrary_types_allowed = True
 
     @classmethod
-    async def parse(
-        cls, request: Request, deployment_id: str, endpoint_name: str
-    ) -> "AzureClient":
+    async def parse(cls, request: Request, endpoint_name: str) -> "AzureClient":
 
         body = await request.json()
         headers = request.headers.mutablecopy()
@@ -80,13 +78,6 @@ class AzureClient(BaseModel):
                 message="The 'api-key' request header is missing",
             )
 
-        remote_dial_api_key = headers.get(UPSTREAM_KEY_HEADER, None)
-        if not remote_dial_api_key:
-            raise HTTPException(
-                status_code=400,
-                message=f"The {UPSTREAM_KEY_HEADER!r} request header is missing",
-            )
-
         upstream_endpoint = headers.get(UPSTREAM_ENDPOINT_HEADER, None)
         if not upstream_endpoint:
             raise HTTPException(
@@ -94,20 +85,48 @@ class AzureClient(BaseModel):
                 message=f"The {UPSTREAM_ENDPOINT_HEADER!r} request header is missing",
             )
 
-        # NOTE: it's not really necessary for the endpoint to point to the same deployment id.
-        # Here we just follow the convention used in OpenAI adapter.
-        endpoint_suffix = f"/{deployment_id}/{endpoint_name}"
+        remote_dial_url = get_hostname(upstream_endpoint)
+        remote_dial_api_key = headers.get(UPSTREAM_KEY_HEADER, None)
+
+        if not remote_dial_api_key:
+            if remote_dial_url != LOCAL_DIAL_URL:
+                raise HTTPException(
+                    status_code=400,
+                    message=(
+                        f"Given that {UPSTREAM_KEY_HEADER!r} header is missing, "
+                        f"it's expected that hostname of upstream endpoint ({upstream_endpoint!r}) is "
+                        f"the same as the local DIAL URL ({LOCAL_DIAL_URL!r}) "
+                    ),
+                )
+
+            local_dial_api_key = request.headers.get("api-key")
+            if not local_dial_api_key:
+                raise HTTPException(
+                    status_code=400,
+                    message="The 'api-key' request header is missing",
+                )
+
+            remote_dial_api_key = local_dial_api_key
+
+        endpoint_suffix = f"/{endpoint_name}"
         if not upstream_endpoint.endswith(endpoint_suffix):
             raise HTTPException(
                 status_code=400,
                 message=f"The {UPSTREAM_ENDPOINT_HEADER!r} request header must end with {endpoint_suffix!r}",
             )
-        upstream_endpoint = upstream_endpoint.removesuffix(f"/{endpoint_name}")
+        upstream_endpoint = upstream_endpoint.removesuffix(endpoint_suffix)
 
         client = AsyncAzureOpenAI(
             base_url=upstream_endpoint,
             api_key=remote_dial_api_key,
-            api_version=query_params.get("api-version"),
+            # NOTE: defaulting missing api-version to an empty string, because
+            # 1. openai library doesn't allow for a missing api-version
+            # and a workaround for it would be a recreation of AsyncAzureOpenAI with a check disabled:
+            # https://gitlab.deltixhub.com/Deltix/openai-apps/dial-interceptor-example/-/blob/62760a4c7a7be740b1c2bc60f14a0a568f31a0bc/aidial_interceptor_example/utils/azure.py#L1-5
+            # 2. OpenAI adapter treats a missing api-version in the same way as an empty string and that's the only
+            # place where api-version has any meaning, so the query param modification is safe.
+            # https://github.com/epam/ai-dial-adapter-openai/blob/b462d1c26ce8f9d569b9c085a849206aad91becf/aidial_adapter_openai/app.py#L93
+            api_version=query_params.get("api-version") or "",
             http_client=get_http_client(),
         )
 
@@ -117,7 +136,7 @@ class AzureClient(BaseModel):
                 api_key=local_dial_api_key,
             ),
             remote_storage=FileStorage(
-                dial_url=get_hostname(upstream_endpoint),
+                dial_url=remote_dial_url,
                 api_key=remote_dial_api_key,
             ),
         )
@@ -128,11 +147,12 @@ class AzureClient(BaseModel):
         )
 
 
+@app.post("/embeddings")
 @app.post("/openai/deployments/{deployment_id:path}/embeddings")
 @dial_exception_decorator
-async def embeddings_proxy(request: Request, deployment_id: str):
+async def embeddings_proxy(request: Request):
     body = await request.json()
-    az_client = await AzureClient.parse(request, deployment_id, "embeddings")
+    az_client = await AzureClient.parse(request, "embeddings")
 
     response: CreateEmbeddingResponse = await call_with_extra_body(
         az_client.client.embeddings.create, body
@@ -141,13 +161,12 @@ async def embeddings_proxy(request: Request, deployment_id: str):
     return response.to_dict()
 
 
+@app.post("/chat/completions")
 @app.post("/openai/deployments/{deployment_id:path}/chat/completions")
 @dial_exception_decorator
-async def chat_completions_proxy(request: Request, deployment_id: str):
+async def chat_completions_proxy(request: Request):
 
-    az_client = await AzureClient.parse(
-        request, deployment_id, "chat/completions"
-    )
+    az_client = await AzureClient.parse(request, "chat/completions")
 
     transformer = az_client.attachment_transformer
 

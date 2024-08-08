@@ -67,10 +67,15 @@ def create_error(
 def to_dial_exception(e: Exception) -> HTTPException | FastAPIException:
     if isinstance(e, APIStatusError):
         r = e.response
+        headers = r.headers
+
+        if "Content-Length" in headers:
+            del headers["Content-Length"]
+
         return FastAPIException(
-            detail=r.json(),
+            detail=r.text,
             status_code=r.status_code,
-            headers=dict(r.headers),
+            headers=dict(headers),
         )
 
     if isinstance(e, APITimeoutError):

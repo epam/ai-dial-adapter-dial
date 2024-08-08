@@ -130,6 +130,8 @@ class FileStorage(BaseModel):
         content: bytes,
         session: aiohttp.ClientSession,
     ) -> FileMetadata:
+        log.debug(f"uploading file {url!r}")
+
         if self.to_dial_url(url) is None:
             raise ValueError(f"URL isn't DIAL url: {url!r}")
         url = self.to_abs_url(url)
@@ -158,6 +160,8 @@ class FileStorage(BaseModel):
         return ret
 
     async def download(self, url: str, session: aiohttp.ClientSession) -> bytes:
+        log.debug(f"downloading file {url!r}")
+
         if self.to_dial_url(url) is None:
             raise ValueError(f"URL isn't DIAL url: {url!r}")
         url = self.to_abs_url(url)
