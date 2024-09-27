@@ -5,6 +5,5 @@ on:
 
 jobs:
   Build_docker_image:
-    uses: epam/ai-dial-ci/blob/feat/add-e2e-gke/.github/workflows/publish-to-gcr.yml@feat/add-e2e-gke
-    with:
-      IMAGE_TAG: ${{ github.ref }}
+    uses: epam/ai-dial-ci/.github/workflows/publish-to-gcr.yml@feat/add-e2e-gke
+
