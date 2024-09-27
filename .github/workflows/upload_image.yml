@@ -1,0 +1,10 @@
+on:
+   push:
+     branches:
+       - test
+
+jobs:
+  Build_docker_image:
+    uses: epam/ai-dial-ci/blob/feat/add-e2e-gke/.github/workflows/publish-to-gcr.yml@feat/add-e2e-gke
+    with:
+      IMAGE_TAG: ${{ github.ref }}
