@@ -1,9 +1,19 @@
 on:
-   push:
-     branches:
-       - test
+  push:
+    branches:
+      - test
 
 jobs:
-  Build_docker_image:
-    uses: epam/ai-dial-ci/.github/workflows/publish-to-gcr.yml@feat/add-e2e-gke
+  checkout_Dockerfile:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      id-token: 'write'
 
+    steps:
+      - id: checkout
+        name: checkout Dockerfile
+        uses: 'actions/checkout@v4'
+
+  build_docker_image:
+    uses: epam/ai-dial-ci/.github/workflows/publish-to-gcr.yml@feat/add-e2e-gke
