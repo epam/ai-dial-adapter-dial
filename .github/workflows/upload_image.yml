@@ -17,3 +17,7 @@ jobs:
 
   build_docker_image:
     uses: epam/ai-dial-ci/.github/workflows/publish-to-gcr.yml@feat/add-e2e-gke
+    secrets:
+      create_credentials_file: true
+      workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
+      service_account: ${{ secrets.GCP_SA_EMAIL }}
