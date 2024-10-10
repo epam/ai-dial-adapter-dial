@@ -15,9 +15,15 @@ jobs:
         name: checkout Dockerfile
         uses: 'actions/checkout@v4'
 
-  build_docker_image:
-    uses: epam/ai-dial-ci/.github/workflows/publish-to-gcr.yml@feat/add-e2e-gke
-    secrets:
-      create_credentials_file: true
-      workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
-      service_account: ${{ secrets.GCP_SA_EMAIL }}
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          create_credentials_file: true
+          workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SA_EMAIL }}
+
+      # - name: Login to GitHub Container Registry
+      #   uses: docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d # v3.0.0
+      #   with:
+      #     registry: ghcr.io
