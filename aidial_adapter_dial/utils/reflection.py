@@ -1,7 +1,7 @@
 import inspect
 from typing import Any, Callable, Coroutine, TypeVar
 
-from aidial_adapter_dial.utils.exceptions import HTTPException
+from aidial_sdk.exceptions import InvalidRequestError
 
 T = TypeVar("T")
 
@@ -18,10 +18,8 @@ async def call_with_extra_body(
     extra_args = actual_args - expected_args
 
     if extra_args and "extra_body" not in expected_args:
-        raise HTTPException(
-            f"Unrecognized request argument supplied: {extra_args}.",
-            400,
-            "invalid_request_error",
+        raise InvalidRequestError(
+            f"Unrecognized request argument supplied: {extra_args}."
         )
 
     arg["extra_body"] = arg.get("extra_body") or {}

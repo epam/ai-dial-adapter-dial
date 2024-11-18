@@ -2,6 +2,7 @@ import json
 import logging
 from urllib.parse import urlparse
 
+from aidial_sdk.exceptions import InvalidRequestError
 from aidial_sdk.telemetry.init import init_telemetry
 from aidial_sdk.telemetry.types import TelemetryConfig
 from fastapi import FastAPI, Request
@@ -14,20 +15,13 @@ from openai.types.chat.chat_completion_chunk import ChatCompletionChunk
 from aidial_adapter_dial.transformer import AttachmentTransformer
 from aidial_adapter_dial.utils.dict import censor_ci_dict
 from aidial_adapter_dial.utils.env import get_env
-from aidial_adapter_dial.utils.exceptions import (
-    HTTPException,
-    dial_exception_decorator,
-)
+from aidial_adapter_dial.utils.exceptions import dial_exception_decorator
 from aidial_adapter_dial.utils.http_client import get_http_client
 from aidial_adapter_dial.utils.log_config import configure_loggers
 from aidial_adapter_dial.utils.reflection import call_with_extra_body
 from aidial_adapter_dial.utils.sse_stream import to_openai_sse_stream
 from aidial_adapter_dial.utils.storage import FileStorage
-from aidial_adapter_dial.utils.streaming import (
-    amap_stream,
-    generate_stream,
-    map_stream,
-)
+from aidial_adapter_dial.utils.streaming import amap_stream, map_stream
 
 app = FastAPI()
 
@@ -73,16 +67,12 @@ class AzureClient(BaseModel):
 
         local_dial_api_key = headers.get("api-key", None)
         if not local_dial_api_key:
-            raise HTTPException(
-                status_code=400,
-                message="The 'api-key' request header is missing",
-            )
+            raise InvalidRequestError("The 'api-key' request header is missing")
 
         upstream_endpoint = headers.get(UPSTREAM_ENDPOINT_HEADER, None)
         if not upstream_endpoint:
-            raise HTTPException(
-                status_code=400,
-                message=f"The {UPSTREAM_ENDPOINT_HEADER!r} request header is missing",
+            raise InvalidRequestError(
+                f"The {UPSTREAM_ENDPOINT_HEADER!r} request header is missing"
             )
 
         remote_dial_url = get_hostname(upstream_endpoint)
@@ -90,29 +80,24 @@ class AzureClient(BaseModel):
 
         if not remote_dial_api_key:
             if remote_dial_url != LOCAL_DIAL_URL:
-                raise HTTPException(
-                    status_code=400,
-                    message=(
-                        f"Given that {UPSTREAM_KEY_HEADER!r} header is missing, "
-                        f"it's expected that hostname of upstream endpoint ({upstream_endpoint!r}) is "
-                        f"the same as the local DIAL URL ({LOCAL_DIAL_URL!r}) "
-                    ),
+                raise InvalidRequestError(
+                    f"Given that {UPSTREAM_KEY_HEADER!r} header is missing, "
+                    f"it's expected that hostname of upstream endpoint ({upstream_endpoint!r}) is "
+                    f"the same as the local DIAL URL ({LOCAL_DIAL_URL!r}) "
                 )
 
             local_dial_api_key = request.headers.get("api-key")
             if not local_dial_api_key:
-                raise HTTPException(
-                    status_code=400,
-                    message="The 'api-key' request header is missing",
+                raise InvalidRequestError(
+                    "The 'api-key' request header is missing"
                 )
 
             remote_dial_api_key = local_dial_api_key
 
         endpoint_suffix = f"/{endpoint_name}"
         if not upstream_endpoint.endswith(endpoint_suffix):
-            raise HTTPException(
-                status_code=400,
-                message=f"The {UPSTREAM_ENDPOINT_HEADER!r} request header must end with {endpoint_suffix!r}",
+            raise InvalidRequestError(
+                f"The {UPSTREAM_ENDPOINT_HEADER!r} request header must end with {endpoint_suffix!r}"
             )
         upstream_endpoint = upstream_endpoint.removesuffix(endpoint_suffix)
 
@@ -192,9 +177,7 @@ async def chat_completions_proxy(request: Request):
 
         chunk_stream = map_stream(lambda obj: obj.to_dict(), response)
         return StreamingResponse(
-            to_openai_sse_stream(
-                amap_stream(modify_chunk, generate_stream(chunk_stream))
-            ),
+            to_openai_sse_stream(amap_stream(modify_chunk, chunk_stream)),
             media_type="text/event-stream",
         )
     else:
