@@ -69,8 +69,19 @@ def to_dial_exception(e: Exception) -> HTTPException | FastAPIException:
         r = e.response
         headers = r.headers
 
+        # The original content length may have changed
+        # due to the response modification in the adapter.
         if "Content-Length" in headers:
             del headers["Content-Length"]
+
+        # httpx library (used by openai) automatically sets
+        # "Accept-Encoding:gzip,deflate" header in requests to the upstream.
+        # Therefore, we may receive from the upstream gzip-encoded
+        # response along with "Content-Encoding:gzip" header.
+        # We either need to encode the response, or
+        # remove the "Content-Encoding" header.
+        if "Content-Encoding" in headers:
+            del headers["Content-Encoding"]
 
         return FastAPIException(
             detail=r.text,
