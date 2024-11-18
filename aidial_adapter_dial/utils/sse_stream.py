@@ -4,7 +4,7 @@ from typing import Any, AsyncIterator, Mapping
 
 from aidial_adapter_dial.utils.exceptions import (
     to_dial_exception,
-    to_fastapi_exception,
+    to_json_content,
 )
 
 DATA_PREFIX = "data: "
@@ -36,8 +36,8 @@ async def to_openai_sse_stream(
         )
 
         dial_exception = to_dial_exception(e)
-        fastapi_exception = to_fastapi_exception(dial_exception)
+        error_chunk = to_json_content(dial_exception)
 
-        yield format_chunk(fastapi_exception.detail)
+        yield format_chunk(error_chunk)
 
     yield END_CHUNK

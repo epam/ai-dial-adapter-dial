@@ -15,7 +15,7 @@ from openai.types.chat.chat_completion_chunk import ChatCompletionChunk
 from aidial_adapter_dial.transformer import AttachmentTransformer
 from aidial_adapter_dial.utils.dict import censor_ci_dict
 from aidial_adapter_dial.utils.env import get_env
-from aidial_adapter_dial.utils.exceptions import dial_exception_decorator
+from aidial_adapter_dial.utils.exceptions import to_dial_exception
 from aidial_adapter_dial.utils.http_client import get_http_client
 from aidial_adapter_dial.utils.log_config import configure_loggers
 from aidial_adapter_dial.utils.reflection import call_with_extra_body
@@ -134,7 +134,6 @@ class AzureClient(BaseModel):
 
 @app.post("/embeddings")
 @app.post("/openai/deployments/{deployment_id:path}/embeddings")
-@dial_exception_decorator
 async def embeddings_proxy(request: Request):
     body = await request.json()
     az_client = await AzureClient.parse(request, "embeddings")
@@ -148,7 +147,6 @@ async def embeddings_proxy(request: Request):
 
 @app.post("/chat/completions")
 @app.post("/openai/deployments/{deployment_id:path}/chat/completions")
-@dial_exception_decorator
 async def chat_completions_proxy(request: Request):
 
     az_client = await AzureClient.parse(request, "chat/completions")
@@ -186,6 +184,14 @@ async def chat_completions_proxy(request: Request):
         if is_debug:
             log.debug(f"response: {json.dumps(resp)}")
         return resp
+
+
+@app.exception_handler(Exception)
+def exception_handler(request: Request, e: Exception):
+    log.exception(f"caught exception: {type(e).__module__}.{type(e).__name__}")
+    dial_exception = to_dial_exception(e)
+    fastapi_response = dial_exception.to_fastapi_response()
+    return fastapi_response
 
 
 @app.get("/health")

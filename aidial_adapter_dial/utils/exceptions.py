@@ -1,65 +1,68 @@
+import dataclasses
 import logging
-from functools import wraps
+from typing import Any
 
 from aidial_sdk.exceptions import HTTPException as DialException
-from fastapi import HTTPException as FastAPIException
+from fastapi.responses import JSONResponse as FastAPIResponse
+from httpx import Headers
 from openai import APIConnectionError, APIStatusError, APITimeoutError
 
 log = logging.getLogger(__name__)
 
 
-def to_dial_exception(e: Exception) -> DialException | FastAPIException:
-    if isinstance(e, APIStatusError):
-        r = e.response
+@dataclasses.dataclass
+class ResponseWrapper:
+    status_code: int
+    headers: Headers | None
+    content: Any
+
+    def to_fastapi_response(self) -> FastAPIResponse:
+        return FastAPIResponse(
+            content=self.content,
+            status_code=self.status_code,
+            headers=self.headers,
+        )
+
+
+def to_dial_exception(exc: Exception) -> DialException | ResponseWrapper:
+    if isinstance(exc, APIStatusError):
+        r = exc.response
         headers = r.headers
 
         if "Content-Length" in headers:
             del headers["Content-Length"]
 
-        return FastAPIException(
-            detail=r.text,
+        try:
+            content = r.json()
+        except Exception:
+            content = r.text
+
+        return ResponseWrapper(
             status_code=r.status_code,
-            headers=dict(headers),
+            headers=headers,
+            content=content,
         )
 
-    if isinstance(e, APITimeoutError):
+    if isinstance(exc, APITimeoutError):
         return DialException("Request timed out", 504, "timeout")
 
-    if isinstance(e, APIConnectionError):
+    if isinstance(exc, APIConnectionError):
         return DialException(
             "Error communicating with OpenAI", 502, "connection"
         )
 
-    if isinstance(e, DialException):
-        return e
+    if isinstance(exc, DialException):
+        return exc
 
     return DialException(
         status_code=500,
         type="internal_server_error",
-        message=str(e),
+        message=str(exc),
     )
 
 
-def to_fastapi_exception(
-    e: DialException | FastAPIException,
-) -> FastAPIException:
-    if isinstance(e, FastAPIException):
-        return e
+def to_json_content(exc: DialException | ResponseWrapper) -> Any:
+    if isinstance(exc, DialException):
+        return exc.json_error()
     else:
-        return e.to_fastapi_exception()
-
-
-def dial_exception_decorator(func):
-    @wraps(func)
-    async def wrapper(*args, **kwargs):
-        try:
-            return await func(*args, **kwargs)
-        except Exception as e:
-            log.exception(
-                f"caught exception: {type(e).__module__}.{type(e).__name__}"
-            )
-            dial_exception = to_dial_exception(e)
-            fastapi_exception = to_fastapi_exception(dial_exception)
-            raise fastapi_exception from e
-
-    return wrapper
+        return exc.content
