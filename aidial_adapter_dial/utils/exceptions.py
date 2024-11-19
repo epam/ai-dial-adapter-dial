@@ -1,72 +1,32 @@
+import dataclasses
 import logging
-from functools import wraps
-from typing import Optional
+from typing import Any
 
-from fastapi import HTTPException as FastAPIException
+from aidial_sdk.exceptions import HTTPException as DialException
+from fastapi.responses import JSONResponse as FastAPIResponse
+from httpx import Headers
 from openai import APIConnectionError, APIStatusError, APITimeoutError
 
 log = logging.getLogger(__name__)
 
 
-class HTTPException(Exception):
-    def __init__(
-        self,
-        message: str,
-        status_code: int = 500,
-        type: str = "runtime_error",
-        param: Optional[str] = None,
-        code: Optional[str] = None,
-        display_message: Optional[str] = None,
-    ) -> None:
-        self.message = message
-        self.status_code = status_code
-        self.type = type
-        self.param = param
-        self.code = code
-        self.display_message = display_message
+@dataclasses.dataclass
+class ResponseWrapper:
+    status_code: int
+    headers: Headers | None
+    content: Any
 
-    def __repr__(self):
-        return (
-            "%s(message=%r, status_code=%r, type=%r, param=%r, code=%r, display_message=%r)"
-            % (
-                self.__class__.__name__,
-                self.message,
-                self.status_code,
-                self.type,
-                self.param,
-                self.code,
-                self.display_message,
-            )
+    def to_fastapi_response(self) -> FastAPIResponse:
+        return FastAPIResponse(
+            content=self.content,
+            status_code=self.status_code,
+            headers=self.headers,
         )
 
 
-def remove_nones(d: dict) -> dict:
-    return {k: v for k, v in d.items() if v is not None}
-
-
-def create_error(
-    message: str,
-    type: Optional[str] = None,
-    param: Optional[str] = None,
-    code: Optional[str] = None,
-    display_message: Optional[str] = None,
-):
-    return {
-        "error": remove_nones(
-            {
-                "message": message,
-                "type": type,
-                "param": param,
-                "code": code,
-                "display_message": display_message,
-            }
-        )
-    }
-
-
-def to_dial_exception(e: Exception) -> HTTPException | FastAPIException:
-    if isinstance(e, APIStatusError):
-        r = e.response
+def to_dial_exception(exc: Exception) -> DialException | ResponseWrapper:
+    if isinstance(exc, APIStatusError):
+        r = exc.response
         headers = r.headers
 
         # The original content length may have changed
@@ -83,60 +43,37 @@ def to_dial_exception(e: Exception) -> HTTPException | FastAPIException:
         if "Content-Encoding" in headers:
             del headers["Content-Encoding"]
 
-        return FastAPIException(
-            detail=r.text,
+        try:
+            content = r.json()
+        except Exception:
+            content = r.text
+
+        return ResponseWrapper(
             status_code=r.status_code,
-            headers=dict(headers),
+            headers=headers,
+            content=content,
         )
 
-    if isinstance(e, APITimeoutError):
-        return HTTPException("Request timed out", 504, "timeout")
+    if isinstance(exc, APITimeoutError):
+        return DialException("Request timed out", 504, "timeout")
 
-    if isinstance(e, APIConnectionError):
-        return HTTPException(
+    if isinstance(exc, APIConnectionError):
+        return DialException(
             "Error communicating with OpenAI", 502, "connection"
         )
 
-    if isinstance(e, HTTPException):
-        return e
+    if isinstance(exc, DialException):
+        return exc
 
-    return HTTPException(
+    return DialException(
         status_code=500,
         type="internal_server_error",
-        message=str(e),
-        code=None,
-        param=None,
+        message=str(exc),
     )
 
 
-def to_starlette_exception(
-    e: HTTPException | FastAPIException,
-) -> FastAPIException:
-    if isinstance(e, FastAPIException):
-        return e
-
-    return FastAPIException(
-        status_code=e.status_code,
-        detail=create_error(
-            message=e.message,
-            type=e.type,
-            param=e.param,
-            code=e.code,
-            display_message=e.display_message,
-        ),
-    )
-
-
-def dial_exception_decorator(func):
-    @wraps(func)
-    async def wrapper(*args, **kwargs):
-        try:
-            return await func(*args, **kwargs)
-        except Exception as e:
-            log.exception(
-                f"caught exception: {type(e).__module__}.{type(e).__name__}"
-            )
-            dial_exception = to_dial_exception(e)
-            raise to_starlette_exception(dial_exception) from e
-
-    return wrapper
+def to_json_content(exc: DialException | ResponseWrapper) -> Any:
+    if isinstance(exc, DialException):
+        return exc.json_error()
+    else:
+        return exc.content
