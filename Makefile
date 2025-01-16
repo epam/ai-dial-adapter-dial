@@ -2,8 +2,8 @@ PORT ?= 5001
 IMAGE_NAME ?= ai-dial-adapter-dial
 PLATFORM ?= linux/amd64
 DEV_PYTHON ?= 3.11
-VENV ?= .venv
-POETRY ?= $(VENV)/bin/poetry
+VENV_DIR ?= .venv
+POETRY ?= $(VENV_DIR)/bin/poetry
 POETRY_VERSION ?= 1.8.5
 ARGS=
 
@@ -12,8 +12,8 @@ ARGS=
 all: build
 
 init_env:
-	python -m venv $(VENV)
-	$(VENV)/bin/pip install poetry==$(POETRY_VERSION) --quiet
+	python -m venv $(VENV_DIR)
+	$(VENV_DIR)/bin/pip install poetry==$(POETRY_VERSION) --quiet
 
 install: init_env
 	$(POETRY) env use python$(DEV_PYTHON)
