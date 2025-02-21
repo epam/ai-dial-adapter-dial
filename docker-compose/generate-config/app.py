@@ -27,6 +27,13 @@ class Limits(BaseModel):
     max_prompt_tokens: Optional[int] = None
     max_completion_tokens: Optional[int] = None
 
+    def to_conf(self) -> dict:
+        return {
+            "maxPromptTokens": self.max_prompt_tokens,
+            "maxTotalTokens": self.max_total_tokens,
+            "maxCompletionTokens": self.max_completion_tokens,
+        }
+
 
 class Capabilities(BaseModel):
     scale_types: List[str]
@@ -48,12 +55,45 @@ class Features(BaseModel):
     url_attachments: bool
     folder_attachments: bool
 
+    allow_resume: bool
+    accessible_by_per_request_key: bool
+    content_parts: bool
+    temperature: bool
+    addons: bool
+
+    def to_conf(self, endpoint_base: str) -> dict:
+        return {
+            "rateEndpoint": (f"{endpoint_base}/rate" if self.rate else None),
+            "tokenizeEndpoint": (
+                f"{endpoint_base}/tokenize" if self.tokenize else None
+            ),
+            "truncatePromptEndpoint": (
+                f"{endpoint_base}/truncate_prompt"
+                if self.truncate_prompt
+                else None
+            ),
+            "configurationEndpoint": (
+                f"{endpoint_base}/configuration" if self.configuration else None
+            ),
+            "systemPromptSupported": self.system_prompt,
+            "toolsSupported": self.tools,
+            "seedSupported": self.seed,
+            "urlAttachmentsSupported": self.url_attachments,
+            "folderAttachmentsSupported": self.folder_attachments,
+            "allowResume": self.allow_resume,
+            "accessibleByPerRequestKey": self.accessible_by_per_request_key,
+            "contentPartsSupported": self.content_parts,
+            "temperatureSupported": self.temperature,
+            "addonsSupported": self.addons,
+        }
+
 
 class Data(BaseModel):
     id: str
     model: Optional[str] = None
     display_name: Optional[str] = None
     icon_url: Optional[str] = None
+    reference: Optional[str] = None
     owner: str
     object: str
     status: str
@@ -61,6 +101,8 @@ class Data(BaseModel):
     updated_at: int
     features: Features
     defaults: Optional[Dict[str, Any]] = None
+    description_keywords: Optional[List[str]] = None
+    max_retry_attempts: Optional[int] = None
     lifecycle_status: Optional[str] = None
     capabilities: Optional[Capabilities] = None
     limits: Optional[Limits] = None
@@ -153,19 +195,33 @@ def main(
         )
 
         if local_app_port is not None:
+            endpoint_base = f"http://host.docker.internal:{local_app_port}/openai/deployments/app"
+
             config.add_application(
                 "local-application",
                 {
                     "displayName": "Locally hosted application",
-                    "endpoint": f"http://host.docker.internal:{local_app_port}/openai/deployments/app/chat/completions",
+                    "endpoint": f"{endpoint_base}/chat/completions",
                     "forwardAuthToken": True,
                     # Enable all kinds of attachments by default.
                     # The user will remove the ones that are not applicable.
                     "inputAttachmentTypes": ["*/*"],
-                    "features": {
-                        "urlAttachmentsSupported": True,
-                        "folderAttachmentsSupported": True,
-                    },
+                    "features": Features(
+                        rate=True,
+                        tokenize=True,
+                        truncate_prompt=True,
+                        configuration=True,
+                        system_prompt=True,
+                        tools=True,
+                        seed=True,
+                        url_attachments=True,
+                        folder_attachments=True,
+                        allow_resume=True,
+                        accessible_by_per_request_key=True,
+                        content_parts=True,
+                        temperature=True,
+                        addons=True,
+                    ).to_conf(endpoint_base),
                 },
             )
 
@@ -220,6 +276,9 @@ def process_data(
             "displayName": f"{item.display_name} (Adapter)",
             "displayVersion": item.display_version,
             "description": item.description,
+            "descriptionKeywords": item.description_keywords,
+            "maxRetryAttempts": item.max_retry_attempts,
+            "reference": item.reference,
             "tokenizerModel": item.tokenizer_model,
             "iconUrl": icon_url,
             "endpoint": f"{endpoint_base}/{endpoint}",
@@ -230,45 +289,11 @@ def process_data(
                     "key": upstream_key,
                 }
             ],
-            "features": {
-                "rateEndpoint": (
-                    f"{endpoint_base}/rate" if item.features.rate else None
-                ),
-                "tokenizeEndpoint": (
-                    f"{endpoint_base}/tokenize"
-                    if item.features.tokenize
-                    else None
-                ),
-                "truncatePromptEndpoint": (
-                    f"{endpoint_base}/truncate_prompt"
-                    if item.features.truncate_prompt
-                    else None
-                ),
-                "configurationEndpoint": (
-                    f"{endpoint_base}/configuration"
-                    if item.features.configuration
-                    else None
-                ),
-                "systemPromptSupported": item.features.system_prompt,
-                "toolsSupported": item.features.tools,
-                "seedSupported": item.features.seed,
-                "urlAttachmentsSupported": item.features.url_attachments,
-                "folderAttachmentsSupported": item.features.folder_attachments,
-            },
+            "features": item.features.to_conf(endpoint_base),
             "maxInputAttachments": item.max_input_attachments,
             "inputAttachmentTypes": item.input_attachment_types,
             "defaults": item.defaults,
-            "limits": {
-                "maxPromptTokens": (
-                    item.limits.max_prompt_tokens if item.limits else None
-                ),
-                "maxTotalTokens": (
-                    item.limits.max_total_tokens if item.limits else None
-                ),
-                "maxCompletionTokens": (
-                    item.limits.max_completion_tokens if item.limits else None
-                ),
-            },
+            "limits": item.limits.to_conf() if item.limits else None,
             "pricing": {
                 "unit": item.pricing.unit if item.pricing else None,
                 "prompt": item.pricing.prompt if item.pricing else None,

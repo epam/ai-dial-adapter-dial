@@ -1,11 +1,11 @@
 services:
   themes:
-    image: epam/ai-dial-chat-themes:0.4.0
+    image: epam/ai-dial-chat-themes:latest
     ports:
       - "3001:8080"
 
   adapter-dial:
-    image: "epam/ai-dial-adapter-dial:development"
+    image: epam/ai-dial-adapter-dial:development
     environment:
       DIAL_URL: "http://core:8080"
       LOG_LEVEL: "INFO" # "DEBUG"
@@ -13,7 +13,7 @@ services:
   chat:
     ports:
       - "3000:3000"
-    image: epam/ai-dial-chat:0.14.2
+    image: epam/ai-dial-chat:latest
     depends_on:
       - themes
       - core
@@ -22,7 +22,9 @@ services:
       THEMES_CONFIG_HOST: "http://themes:8080"
       DIAL_API_HOST: "http://core:8080"
       DIAL_API_KEY: "dial_api_key"
-      ENABLED_FEATURES: "conversations-section,prompts-section,top-settings,top-clear-conversation,top-chat-info,top-chat-model-settings,empty-chat-settings,header,footer,request-api-key,report-an-issue,likes,conversations-sharing,prompts-sharing,input-files,attachments-manager,conversations-publishing,prompts-publishing,custom-logo,input-links"
+      DIAL_API_VERSION: "2025-01-01-preview"
+      DEFAULT_MODEL: "gpt-35-turbo"
+      ENABLED_FEATURES: "conversations-section,prompts-section,top-settings,top-clear-conversation,top-chat-info,top-chat-model-settings,empty-chat-settings,header,footer,request-api-key,report-an-issue,likes,conversations-sharing,input-files,attachments-manager,prompts-sharing,prompts-publishing,conversations-publishing,custom-logo,input-links,custom-applications,message-templates,marketplace,quick-apps,code-apps,applications-sharing,marketplace-table-view"
 
   redis:
     image: redis:7.2.4-alpine3.19
@@ -42,7 +44,7 @@ services:
     user: ${UID:-root}
     ports:
       - "8080:8080"
-    image: epam/ai-dial-core:0.14.0
+    image: epam/ai-dial-core:latest
     environment:
       'AIDIAL_SETTINGS': '/opt/settings/settings.json'
       'JAVA_OPTS': '-Dgflog.config=/opt/settings/gflog.xml'
