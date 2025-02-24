@@ -39,3 +39,9 @@
     ```
 
 6. Open local DIAL Chat at [http://localhost:3000](http://localhost:3000)
+
+> [!NOTE]
+> The docker-compose file uses `latest` tag for the DIAL components. Once the images are pulled from the repository, the Docker won't pull it again and use the cached image. To update the images, run the following before starting the containers:
+> ```sh
+> docker compose pull
+> ```
