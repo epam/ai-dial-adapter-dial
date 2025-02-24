@@ -31,11 +31,13 @@ async def to_openai_sse_stream(
         async for chunk in stream:
             yield format_chunk(chunk)
     except Exception as e:
+        dial_exception = to_dial_exception(e)
+
         log.exception(
-            f"caught exception while streaming: {type(e).__module__}.{type(e).__name__}"
+            f"Caught exception while streaming: {type(e).__module__}.{type(e).__name__}. "
+            f"The exception converted to the dial exception: {dial_exception!r}."
         )
 
-        dial_exception = to_dial_exception(e)
         error_chunk = to_json_content(dial_exception)
 
         yield format_chunk(error_chunk)

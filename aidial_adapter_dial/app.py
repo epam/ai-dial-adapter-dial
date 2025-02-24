@@ -188,8 +188,13 @@ async def chat_completions_proxy(request: Request):
 
 @app.exception_handler(Exception)
 def exception_handler(request: Request, e: Exception):
-    log.exception(f"caught exception: {type(e).__module__}.{type(e).__name__}")
     dial_exception = to_dial_exception(e)
+
+    log.exception(
+        f"Caught exception: {type(e).__module__}.{type(e).__name__}. "
+        f"The exception converted to the dial exception: {dial_exception!r}."
+    )
+
     fastapi_response = dial_exception.to_fastapi_response()
     return fastapi_response
 
