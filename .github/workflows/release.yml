@@ -6,5 +6,8 @@ on:
 
 jobs:
   release:
-    uses: epam/ai-dial-ci/.github/workflows/python_docker_release.yml@1.12.1
+    uses: epam/ai-dial-ci/.github/workflows/python_docker_release.yml@1.13.0
     secrets: inherit
+    with:
+      severity_for_sarif_trivy: "CRITICAL,HIGH,MEDIUM"
+      limit_severities_for_sarif_trivy: true
