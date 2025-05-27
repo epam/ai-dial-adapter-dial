@@ -14,7 +14,7 @@ from openai.types.chat.chat_completion_chunk import ChatCompletionChunk
 
 from aidial_adapter_dial.transformer import AttachmentTransformer
 from aidial_adapter_dial.utils.dict import censor_ci_dict
-from aidial_adapter_dial.utils.env import get_env
+from aidial_adapter_dial.utils.env import get_env, get_env_list
 from aidial_adapter_dial.utils.exceptions import to_dial_exception
 from aidial_adapter_dial.utils.http_client import get_http_client
 from aidial_adapter_dial.utils.log_config import configure_loggers
@@ -35,6 +35,7 @@ UPSTREAM_KEY_HEADER = "X-UPSTREAM-KEY"
 UPSTREAM_ENDPOINT_HEADER = "X-UPSTREAM-ENDPOINT"
 
 LOCAL_DIAL_URL = get_env("DIAL_URL")
+HEADERS_TO_PROXY = get_env_list("HEADERS_TO_PROXY", ["Accept"])
 
 
 def get_hostname(url: str) -> str:
@@ -101,6 +102,12 @@ class AzureClient(BaseModel):
             )
         upstream_endpoint = upstream_endpoint.removesuffix(endpoint_suffix)
 
+        extra_upstream_headers = {
+            key: val
+            for key in HEADERS_TO_PROXY
+            if (val := headers.get(key)) is not None
+        }
+
         client = AsyncAzureOpenAI(
             base_url=upstream_endpoint,
             api_key=remote_dial_api_key,
@@ -112,6 +119,7 @@ class AzureClient(BaseModel):
             # place where api-version has any meaning, so the query param modification is safe.
             # https://github.com/epam/ai-dial-adapter-openai/blob/b462d1c26ce8f9d569b9c085a849206aad91becf/aidial_adapter_openai/app.py#L93
             api_version=query_params.get("api-version") or "",
+            default_headers=extra_upstream_headers,
             http_client=get_http_client(),
         )
 
