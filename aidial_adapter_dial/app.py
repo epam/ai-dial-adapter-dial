@@ -35,7 +35,7 @@ UPSTREAM_KEY_HEADER = "X-UPSTREAM-KEY"
 UPSTREAM_ENDPOINT_HEADER = "X-UPSTREAM-ENDPOINT"
 
 LOCAL_DIAL_URL = get_env("DIAL_URL")
-PASSTHROUGH_HEADERS = get_env_list("PASSTHROUGH_HEADERS", ["Accept"])
+HEADERS_TO_PROXY = get_env_list("HEADERS_TO_PROXY", ["Accept"])
 
 
 def get_hostname(url: str) -> str:
@@ -104,7 +104,7 @@ class AzureClient(BaseModel):
 
         extra_upstream_headers = {
             key: val
-            for key in PASSTHROUGH_HEADERS
+            for key in HEADERS_TO_PROXY
             if (val := headers.get(key)) is not None
         }
 

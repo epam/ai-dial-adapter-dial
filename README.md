@@ -62,7 +62,7 @@ Copy `.env.example` to `.env` and customize it for your environment:
 |LOG_LEVEL|INFO|Log level. Use DEBUG for dev purposes and INFO in prod|
 |WEB_CONCURRENCY|1|Number of workers for the server|
 |DIAL_URL||URL of the **local** DIAL Core server used for development|
-|PASSTHROUGH_HEADERS|`Accept`|Comma-separated list of headers to pass through to the upstream.|
+|HEADERS_TO_PROXY|`Accept`|Comma-separated list of headers to pass through to the upstream.|
 
 ### Docker
 
