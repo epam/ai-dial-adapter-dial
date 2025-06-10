@@ -14,6 +14,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules"
 ]
 requires-python = ">=3.11,<3.13"
+dynamic = ["dependencies"]
 
 [project.urls]
 Homepage = "https://epam-rail.com"
