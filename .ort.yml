@@ -22,3 +22,6 @@ resolutions:
     - message: ".*PyPI::httpx:0\\.28\\.1.*"
       reason: "CANT_FIX_EXCEPTION"
       comment: "BSD 3-Clause New or Revised License: https://github.com/encode/httpx/blob/0.28.1/LICENSE.md"
+    - message: ".*PyPI::typing-extensions:4\\.14\\.1.*"
+      reason: "CANT_FIX_EXCEPTION"
+      comment: "Same as CPython: https://github.com/python/typing_extensions/blob/4.14.1/LICENSE"
