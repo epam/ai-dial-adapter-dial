@@ -277,6 +277,12 @@ async def modify_message(
             for attachment in attachments:
                 await modify_attachment(attachment)
 
+        if stages := cc.get("stages"):
+            for stage in stages:
+                if attachments := stage.get("attachments"):
+                    for attachment in attachments:
+                        await modify_attachment(attachment)
+
     if content := message.get("content"):
         if isinstance(content, list):
             for part in content:
