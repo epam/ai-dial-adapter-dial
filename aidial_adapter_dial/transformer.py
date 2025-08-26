@@ -3,12 +3,15 @@ import re
 from typing import Any, Callable, Coroutine, Self
 
 import aiohttp
+from openai.types.chat.chat_completion_content_part_param import (
+    ChatCompletionContentPartParam,
+)
 from pydantic import BaseModel
 
 from aidial_adapter_dial.utils.app_data import AppData
 from aidial_adapter_dial.utils.storage import FileStorage
 
-log = logging.getLogger(__name__)
+_log = logging.getLogger(__name__)
 
 
 class AttachmentTransformer(BaseModel):
@@ -47,7 +50,7 @@ class AttachmentTransformer(BaseModel):
             and remote_storage.api_key == local_storage.api_key
         )
 
-        log.debug(f"proxy_mode: {proxy_mode}")
+        _log.debug(f"proxy_mode: {proxy_mode}")
 
         return cls(
             remote_storage=remote_storage,
@@ -129,16 +132,10 @@ class AttachmentTransformer(BaseModel):
         else:
             return remote_url
 
-    async def modify_request_attachment(self, attachment: dict) -> None:
-        if (ref_url := attachment.get("reference_url")) and (
-            local_ref_url := self.local_storage.to_dial_url(ref_url)
-        ):
-            remote_ref_url = self.get_remote_url(local_ref_url)
-            attachment["reference_url"] = remote_ref_url
-
-        if (url := attachment.get("url")) and (
-            local_url := self.local_storage.to_dial_url(url)
-        ):
+    async def transform_request_url(
+        self, url: str, content_type: str | None
+    ) -> str | None:
+        if local_url := self.local_storage.to_dial_url(url):
             remote_url = self.get_remote_url(local_url)
 
             await download_and_upload_file(
@@ -146,14 +143,42 @@ class AttachmentTransformer(BaseModel):
                 local_url,
                 self.remote_storage,
                 remote_url,
-                attachment.get("type"),
+                content_type,
             )
 
-            attachment["url"] = remote_url
-
-            log.debug(
+            _log.debug(
                 f"uploaded from local to remote: from {local_url!r} to {remote_url!r}"
             )
+
+            return remote_url
+        return None
+
+    async def modify_request_content_part(
+        self, part: ChatCompletionContentPartParam
+    ) -> None:
+        match part["type"]:
+            case "text":
+                pass
+            case "image_url":
+                image_url = part["image_url"]
+                url = image_url["url"]
+                if remote_url := await self.transform_request_url(url, None):
+                    image_url["url"] = remote_url
+            case _:
+                _log.warning(f"unhandled type of content part: {part['type']}")
+
+    async def modify_request_attachment(self, attachment: dict) -> None:
+        if (ref_url := attachment.get("reference_url")) and (
+            local_ref_url := self.local_storage.to_dial_url(ref_url)
+        ):
+            remote_ref_url = self.get_remote_url(local_ref_url)
+            attachment["reference_url"] = remote_ref_url
+
+        ty = attachment.get("type")
+        url = attachment.get("url")
+
+        if url and (remote_url := await self.transform_request_url(url, ty)):
+            attachment["url"] = remote_url
 
     async def modify_response_attachment(self, attachment: dict) -> None:
         if (ref_url := attachment.get("reference_url")) and (
@@ -176,7 +201,7 @@ class AttachmentTransformer(BaseModel):
             )
             attachment["url"] = local_url
 
-            log.debug(
+            _log.debug(
                 f"uploaded from remote to local: from {remote_url!r} to {local_url!r}"
             )
 
@@ -184,7 +209,11 @@ class AttachmentTransformer(BaseModel):
         if "messages" in request:
             messages = request["messages"]
             for message in messages:
-                await modify_message(message, self.modify_request_attachment)
+                await modify_message(
+                    message,
+                    self.modify_request_attachment,
+                    self.modify_request_content_part,
+                )
         return request
 
     async def modify_response_chunk(self, response: dict) -> dict:
@@ -221,7 +250,7 @@ async def download_and_upload_file(
     dest_url: str,
     content_type: str | None,
 ):
-    log.debug(f"downloading from {src_url!r} and uploading to {dest_url!r}")
+    _log.debug(f"downloading from {src_url!r} and uploading to {dest_url!r}")
 
     if src_url != dest_url:
         if _is_directory(src_url):
@@ -232,18 +261,32 @@ async def download_and_upload_file(
             await dest_storage.upload(dest_url, content_type, content, session)
 
 
+async def noop(*args, **kwargs):
+    pass
+
+
 async def modify_message(
     message: dict,
-    modify_attachment: Callable[[dict], Coroutine[Any, Any, None]],
+    modify_attachment: Callable[[dict], Coroutine[Any, Any, None]] = noop,
+    modify_content_part: Callable[
+        [ChatCompletionContentPartParam], Coroutine[Any, Any, None]
+    ] = noop,
 ) -> None:
-    cc = message.get("custom_content")
-    if cc is None:
-        return
-    attachments = cc.get("attachments")
-    if attachments is None:
-        return
-    for attachment in attachments:
-        await modify_attachment(attachment)
+    if cc := message.get("custom_content"):
+        if attachments := cc.get("attachments"):
+            for attachment in attachments:
+                await modify_attachment(attachment)
+
+        if stages := cc.get("stages"):
+            for stage in stages:
+                if attachments := stage.get("attachments"):
+                    for attachment in attachments:
+                        await modify_attachment(attachment)
+
+    if content := message.get("content"):
+        if isinstance(content, list):
+            for part in content:
+                await modify_content_part(part)
 
 
 def _is_directory(url: str) -> bool:
