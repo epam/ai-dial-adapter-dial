@@ -42,6 +42,11 @@ async def _create_transformer(
             "files/local-user-bucket/path/to/file.txt",
             "files/remote-user-bucket/local-user-bucket/path/to/file.txt",
         ),
+        (
+            False,
+            "files/unknown-user-bucket/path/to/shared/file.txt",
+            "files/remote-user-bucket/unknown-user-bucket/path/to/shared/file.txt",
+        ),
     ],
 )
 async def test_get_remote_url_success(
@@ -61,7 +66,9 @@ async def test_get_remote_url_success(
 )
 async def test_get_remote_url_invalid_prefix(local_url: str):
     transformer = await _create_transformer(proxy_mode=False)
-    with pytest.raises(ValueError, match="Unexpected local URL: "):
+    with pytest.raises(
+        ValueError, match="Local URL is expected to point to files resource: "
+    ):
         transformer.get_remote_url(local_url)
 
 
@@ -75,8 +82,18 @@ async def test_get_remote_url_invalid_prefix(local_url: str):
         ),
         (
             True,
-            "files/local-user-bucket/local-user-bucket/some/path.txt",
-            "files/local-user-bucket/local-user-bucket/some/path.txt",
+            "files/local-user-bucket/appdata/local-app-name/some/path.txt",
+            "files/local-user-bucket/appdata/local-app-name/some/path.txt",
+        ),
+        (
+            False,
+            "files/remote-user-bucket/unknown-user-bucket/path/to/shared/file.txt",
+            "files/unknown-user-bucket/path/to/shared/file.txt",
+        ),
+        (
+            False,
+            "files/remote-user-bucket/path/to/shared.doc",
+            "files/path/to/shared.doc",
         ),
     ],
 )
@@ -87,23 +104,6 @@ async def test_get_local_url_success(
     assert transformer.get_local_url(remote_url) == expected
 
 
-@pytest.mark.parametrize(
-    ("proxy_mode", "remote_url"),
-    [
-        (False, "files/remote-user-bucket/path/to/shared.doc"),
-    ],
-)
-async def test_get_local_url_unknown_user_bucket(
-    proxy_mode: bool, remote_url: str
-):
-    transformer = await _create_transformer(proxy_mode=proxy_mode)
-    with pytest.raises(
-        ValueError,
-        match=r"The remote file \([^\)]+\) is expected to be uploaded either to remote appdata path or to a local user bucket subpath of remote user bucket",
-    ):
-        assert transformer.get_local_url(remote_url)
-
-
 async def test_get_local_url_rejects_wrong_bucket():
     transformer = await _create_transformer()
     with pytest.raises(
@@ -111,7 +111,7 @@ async def test_get_local_url_rejects_wrong_bucket():
         match=r"The remote file \([^\)]+\) is expected to be uploaded to the remote user bucket \([^\)]+\)",
     ):
         transformer.get_local_url(
-            "files/unknown-bucket/appdata/unknown-app-name/path/to/file"
+            "files/unknown-user-bucket/appdata/unknown-app-name/path/to/file"
         )
 
 
