@@ -74,8 +74,8 @@ class AttachmentTransformer(BaseModel):
                 < files/ANY_USER_BUCKET/PATH
                 > files/REMOTE_USER_BUCKET/ANY_USER_BUCKET/PATH
 
-        Note that ANY_USER_BUCKET includes LOCAL_USER_BUCKET and any other bucket, since
-        a file could have been *shared*.
+                Note: ANY_USER_BUCKET includes LOCAL_USER_BUCKET
+                and any other bucket, since a file could have been *shared*.
         """
 
         if self.proxy_mode:
@@ -105,7 +105,7 @@ class AttachmentTransformer(BaseModel):
                 < files/REMOTE_USER_BUCKET/ANY_USER_BUCKET/PATH
                 > files/ANY_USER_BUCKET/PATH
 
-        Files created by the remote (app):
+        Files created by the remote app:
             < files/REMOTE_APP_BUCKET/PATH
             > This means an application has a bug in it.
                 We reject such URLs right away since there is no way
