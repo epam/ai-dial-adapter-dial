@@ -28,7 +28,7 @@ clean = "scripts.clean:main"
 package-mode = false
 
 [tool.poetry.dependencies]
-fastapi = "0.116.1"
+fastapi = "0.120.2"
 uvicorn = "0.23.0"
 aiohttp = "3.12.14"
 openai = "1.32.0"
