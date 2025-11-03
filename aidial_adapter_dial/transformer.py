@@ -66,35 +66,46 @@ class AttachmentTransformer(BaseModel):
         user/app files:
             if proxy_mode:
                 < files/LOCAL_USER_BUCKET/PATH
-                > files/REMOTE_USER_BUCKET/PATH
+                > files/LOCAL_USER_BUCKET/PATH
             else:
-                < files/LOCAL_USER_BUCKET/PATH
-                > files/REMOTE_USER_BUCKET/LOCAL_USER_BUCKET/PATH
+                < files/PATH
+                > files/REMOTE_USER_BUCKET/PATH
+                which implies:
+                < files/ANY_USER_BUCKET/PATH
+                > files/REMOTE_USER_BUCKET/ANY_USER_BUCKET/PATH
+
+                Note: ANY_USER_BUCKET includes LOCAL_USER_BUCKET
+                and any other bucket, since a file could have been *shared*.
         """
 
         if self.proxy_mode:
             return local_url
 
-        if not local_url.startswith(f"files/{self.local_user_bucket}/"):
-            raise ValueError(f"Unexpected local URL: {local_url!r}")
+        if not local_url.startswith("files/"):
+            raise ValueError(
+                f"Local URL is expected to point to files resource: {local_url!r}"
+            )
 
         return f"files/{self.remote_user_bucket}/{local_url.removeprefix('files/')}"
 
     def get_local_url(self, remote_url: str) -> str:
         """
-        user/app files uploaded from local to remote earlier (reverse of get_remote_url):
-            if proxy_mode:
-                < files/REMOTE_USER_BUCKET/PATH
-                > files/LOCAL_USER_BUCKET/PATH
-            else:
-                < files/REMOTE_USER_BUCKET/LOCAL_USER_BUCKET/PATH
-                > files/LOCAL_USER_BUCKET/PATH
-
-        created by remote (user):
+        Files created by the remote application in the user's appdata folder:
             < files/REMOTE_USER_BUCKET/appdata/REMOTE_APP_NAME/PATH
             > files/LOCAL_USER_BUCKET/appdata/LOCAL_APP_NAME/PATH
 
-        created by remote (app):
+        User/app files uploaded from local to remote earlier (the reverse of get_remote_url):
+            if proxy_mode:
+                < files/LOCAL_USER_BUCKET/PATH
+                > files/LOCAL_USER_BUCKET/PATH
+            else:
+                < files/REMOTE_USER_BUCKET/PATH
+                > files/PATH
+                which implies:
+                < files/REMOTE_USER_BUCKET/ANY_USER_BUCKET/PATH
+                > files/ANY_USER_BUCKET/PATH
+
+        Files created by the remote app:
             < files/REMOTE_APP_BUCKET/PATH
             > This means an application has a bug in it.
                 We reject such URLs right away since there is no way
@@ -119,18 +130,10 @@ class AttachmentTransformer(BaseModel):
             _remote_app_name, path = match.groups()
             return f"files/{self.local_appdata}/{path}"
 
-        if not self.proxy_mode:
-            if remote_path.startswith(f"{self.local_user_bucket}/"):
-                path = remote_path.removeprefix(f"{self.local_user_bucket}/")
-                return f"files/{self.local_user_bucket}/{path}"
-
-            raise ValueError(
-                f"The remote file ({remote_url!r}) is expected to be uploaded either "
-                "to remote appdata path or "
-                "to a local user bucket subpath of remote user bucket."
-            )
-        else:
+        if self.proxy_mode:
             return remote_url
+
+        return f"files/{remote_path}"
 
     async def transform_request_url(
         self, url: str, content_type: str | None

@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "aidial-adapter-dial"
-version = "0.10.0rc"
+version = "0.11.0rc"
 description = "DIAL application which adapts one DIAL Core to another DIAL Core"
 authors = [{ name = "EPAM RAIL", email = "SpecialEPM-DIALDevTeam@epam.com" }]
 license = "Apache-2.0"
@@ -28,7 +28,7 @@ clean = "scripts.clean:main"
 package-mode = false
 
 [tool.poetry.dependencies]
-fastapi = "0.116.1"
+fastapi = "0.120.2"
 uvicorn = "0.23.0"
 aiohttp = "3.12.14"
 openai = "1.32.0"
@@ -52,6 +52,7 @@ flake8 = "6.0.0"
 nox = "^2023.4.22"
 
 [tool.pytest.ini_options]
+addopts = "--asyncio-mode=auto"
 testpaths = [
     "tests"
 ]
