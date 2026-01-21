@@ -1,6 +1,7 @@
 import os
 import re
 import sys
+from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional
 from urllib.parse import urlparse, urlunparse
 
@@ -59,7 +60,6 @@ class Features(BaseModel):
     accessible_by_per_request_key: bool
     content_parts: bool
     temperature: bool
-    addons: bool
 
     def to_conf(self, endpoint_base: str) -> dict:
         return {
@@ -84,7 +84,6 @@ class Features(BaseModel):
             "accessibleByPerRequestKey": self.accessible_by_per_request_key,
             "contentPartsSupported": self.content_parts,
             "temperatureSupported": self.temperature,
-            "addonsSupported": self.addons,
         }
 
 
@@ -139,7 +138,7 @@ def modify_url(
     return urlunparse(modified_url)
 
 
-load_dotenv()
+load_dotenv(Path(__file__).parent.parent / "local" / ".env")
 REMOTE_DIAL_URL = get_env("REMOTE_DIAL_URL")
 REMOTE_DIAL_API_KEY = get_env("REMOTE_DIAL_API_KEY")
 
@@ -220,7 +219,6 @@ def main(
                         accessible_by_per_request_key=True,
                         content_parts=True,
                         temperature=True,
-                        addons=True,
                     ).to_conf(endpoint_base),
                 },
             )
