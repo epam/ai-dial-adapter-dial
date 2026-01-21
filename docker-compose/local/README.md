@@ -8,7 +8,7 @@
 
 2. Access to the **remote** DIAL Core server is configured by the env vars `$REMOTE_DIAL_URL` and `$REMOTE_DIAL_API_KEY`. Create `.env` file with the following content:
 
-    ```init
+    ```ini
     REMOTE_DIAL_URL="url-to-dial-core"
     REMOTE_DIAL_API_KEY="dial-api-key"
     ```
