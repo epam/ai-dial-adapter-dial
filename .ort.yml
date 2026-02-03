@@ -33,5 +33,7 @@ resolutions:
       comment: "BSD 3-Clause New or Revised License: https://github.com/Kludex/starlette/blob/0.49.1/LICENSE.md"
     - message: ".*PyPI::opentelemetry.*"
       reason: "CANT_FIX_EXCEPTION"
+      comment: "ORT cannot pickup license"
     - message: ".*PyPI::typing-extensions.*"
       reason: "CANT_FIX_EXCEPTION"
+      comment: "ORT cannot pickup license"
