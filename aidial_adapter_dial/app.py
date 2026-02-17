@@ -1,7 +1,6 @@
 import json
 import logging
 
-import httpx
 from aidial_sdk.exceptions import InvalidRequestError
 from aidial_sdk.telemetry.init import init_telemetry
 from aidial_sdk.telemetry.types import TelemetryConfig
@@ -138,9 +137,7 @@ for endpoint in ["configuration"]:
     @app.get("/openai/deployments/{deployment_id:path}/" + endpoint)
     async def get_endpoint_proxy(request: Request, endpoint=endpoint):
         az_client = await AzureClient.parse(request)
-        return await az_client.dial_client.get(
-            path=endpoint, cast_to=httpx.Response
-        )
+        return await az_client.dial_client.get(path=endpoint, cast_to=object)
 
 
 for endpoint in ["tokenize", "truncate_prompt"]:
@@ -151,7 +148,7 @@ for endpoint in ["tokenize", "truncate_prompt"]:
         body = await request.json()
         az_client = await AzureClient.parse(request)
         return await az_client.dial_client.post(
-            path=endpoint, cast_to=httpx.Response, body=body
+            path=endpoint, cast_to=object, body=body
         )
 
 
