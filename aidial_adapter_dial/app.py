@@ -1,5 +1,6 @@
 import json
 import logging
+from typing import Literal
 from urllib.parse import urlparse
 
 from aidial_sdk.exceptions import InvalidRequestError
@@ -52,7 +53,11 @@ class AzureClient(BaseModel):
         arbitrary_types_allowed = True
 
     @classmethod
-    async def parse(cls, request: Request, endpoint_name: str) -> "AzureClient":
+    async def parse(
+        cls,
+        request: Request,
+        upstream_endpoint_name: Literal["chat/completions", "embeddings"],
+    ) -> "AzureClient":
         headers = request.headers.mutablecopy()
         query_params = request.query_params
 
@@ -94,7 +99,7 @@ class AzureClient(BaseModel):
 
             remote_dial_api_key = local_dial_api_key
 
-        endpoint_suffix = f"/{endpoint_name}"
+        endpoint_suffix = f"/{upstream_endpoint_name}"
         if not upstream_endpoint.endswith(endpoint_suffix):
             raise InvalidRequestError(
                 f"The {UPSTREAM_ENDPOINT_HEADER!r} request header must end with {endpoint_suffix!r}"
@@ -144,7 +149,7 @@ for endpoint in ["configuration"]:
     @app.get(f"/{endpoint}")
     @app.get("/openai/deployments/{deployment_id:path}/" + endpoint)
     async def get_endpoint_proxy(request: Request):
-        az_client = await AzureClient.parse(request, endpoint)
+        az_client = await AzureClient.parse(request, "chat/completions")
         return await az_client.client.get(path=endpoint, cast_to=dict)
 
 
@@ -153,7 +158,7 @@ for endpoint in ["tokenize", "truncate_prompt"]:
     @app.post(f"/{endpoint}")
     @app.post("/openai/deployments/{deployment_id:path}/" + endpoint)
     async def post_endpoint_proxy(request: Request):
-        az_client = await AzureClient.parse(request, endpoint)
+        az_client = await AzureClient.parse(request, "chat/completions")
         body = await request.json()
         return await az_client.client.post(
             path=endpoint, cast_to=dict, body=body
