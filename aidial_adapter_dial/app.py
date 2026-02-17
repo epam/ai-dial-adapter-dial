@@ -148,7 +148,7 @@ for endpoint in ["configuration"]:
 
     @app.get(f"/{endpoint}")
     @app.get("/openai/deployments/{deployment_id:path}/" + endpoint)
-    async def get_endpoint_proxy(request: Request):
+    async def get_endpoint_proxy(request: Request, endpoint=endpoint):
         az_client = await AzureClient.parse(request, "chat/completions")
         return await az_client.client.get(path=endpoint, cast_to=dict)
 
@@ -157,7 +157,7 @@ for endpoint in ["tokenize", "truncate_prompt"]:
 
     @app.post(f"/{endpoint}")
     @app.post("/openai/deployments/{deployment_id:path}/" + endpoint)
-    async def post_endpoint_proxy(request: Request):
+    async def post_endpoint_proxy(request: Request, endpoint=endpoint):
         az_client = await AzureClient.parse(request, "chat/completions")
         body = await request.json()
         return await az_client.client.post(
