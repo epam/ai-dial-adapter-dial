@@ -1,5 +1,5 @@
 from typing import Literal
-from urllib.parse import urlparse, urlsplit
+from urllib.parse import urlsplit
 
 from aidial_sdk.exceptions import InvalidRequestError
 from openai import BaseModel
@@ -13,15 +13,14 @@ class DialEndpoint(BaseModel):
     @classmethod
     def parse(cls, url: str) -> "DialEndpoint":
         orig_url = url
-        dial_url = _get_hostname(url)
 
         u = urlsplit(url)
-
         if not u.scheme or not u.netloc:
             raise InvalidRequestError(
                 f"Upstream endpoint must be an absolute URL: {orig_url!r}"
             )
 
+        dial_url = f"{u.scheme}://{u.netloc}"
         segments = [s for s in u.path.split("/") if s]
 
         if segments[0:2] != ["openai", "deployments"]:
@@ -57,9 +56,3 @@ class DialEndpoint(BaseModel):
     @property
     def dial_base_url(self) -> str:
         return f"{self.dial_url}/v1/deployments/{self.deployment_id}"
-
-
-def _get_hostname(url: str) -> str:
-    parsed_url = urlparse(url)
-    hostname = f"{parsed_url.scheme}://{parsed_url.netloc}"
-    return hostname
