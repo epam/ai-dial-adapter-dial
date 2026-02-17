@@ -53,12 +53,11 @@ class AzureClient(BaseModel):
 
     @classmethod
     async def parse(cls, request: Request, endpoint_name: str) -> "AzureClient":
-
-        body = await request.json()
         headers = request.headers.mutablecopy()
         query_params = request.query_params
 
         if is_debug:
+            body = await request.body()
             log.debug(f"request.body: {body}")
             secret_headers = ["api-key", "authorization", UPSTREAM_KEY_HEADER]
             log.debug(
@@ -140,13 +139,22 @@ class AzureClient(BaseModel):
         )
 
 
-for endpoint in ["configuration", "tokenize", "truncate_prompt"]:
+for endpoint in ["configuration"]:
+
+    @app.get(f"/{endpoint}")
+    @app.get("/openai/deployments/{deployment_id:path}/" + endpoint)
+    async def get_endpoint_proxy(request: Request):
+        az_client = await AzureClient.parse(request, endpoint)
+        return await az_client.client.get(path=endpoint, cast_to=dict)
+
+
+for endpoint in ["tokenize", "truncate_prompt"]:
 
     @app.post(f"/{endpoint}")
     @app.post("/openai/deployments/{deployment_id:path}/" + endpoint)
-    async def feature_endpoint_proxy(request: Request):
-        body = await request.json()
+    async def post_endpoint_proxy(request: Request):
         az_client = await AzureClient.parse(request, endpoint)
+        body = await request.json()
         return await az_client.client.post(
             path=endpoint, cast_to=dict, body=body
         )
