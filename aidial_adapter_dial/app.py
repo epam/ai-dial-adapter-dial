@@ -1,7 +1,5 @@
 import json
 import logging
-from typing import Literal
-from urllib.parse import urlparse
 
 from aidial_sdk.exceptions import InvalidRequestError
 from aidial_sdk.telemetry.init import init_telemetry
@@ -14,6 +12,7 @@ from openai.types.chat.chat_completion import ChatCompletion
 from openai.types.chat.chat_completion_chunk import ChatCompletionChunk
 
 from aidial_adapter_dial.transformer import AttachmentTransformer
+from aidial_adapter_dial.utils.dial_endpoint import DialEndpoint
 from aidial_adapter_dial.utils.dict import censor_ci_dict
 from aidial_adapter_dial.utils.env import get_env, get_env_list
 from aidial_adapter_dial.utils.exceptions import to_dial_exception
@@ -39,25 +38,16 @@ LOCAL_DIAL_URL = get_env("DIAL_URL")
 HEADERS_TO_PROXY = get_env_list("HEADERS_TO_PROXY", ["Accept"])
 
 
-def get_hostname(url: str) -> str:
-    parsed_url = urlparse(url)
-    hostname = f"{parsed_url.scheme}://{parsed_url.netloc}"
-    return hostname
-
-
 class AzureClient(BaseModel):
     client: AsyncAzureOpenAI
+    dial_client: AsyncAzureOpenAI
     attachment_transformer: AttachmentTransformer
 
     class Config:
         arbitrary_types_allowed = True
 
     @classmethod
-    async def parse(
-        cls,
-        request: Request,
-        upstream_endpoint_name: Literal["chat/completions", "embeddings"],
-    ) -> "AzureClient":
+    async def parse(cls, request: Request) -> "AzureClient":
         headers = request.headers.mutablecopy()
         query_params = request.query_params
 
@@ -80,7 +70,8 @@ class AzureClient(BaseModel):
                 f"The {UPSTREAM_ENDPOINT_HEADER!r} request header is missing"
             )
 
-        remote_dial_url = get_hostname(upstream_endpoint)
+        dial_endpoint = DialEndpoint.parse(upstream_endpoint)
+        remote_dial_url = dial_endpoint.dial_url
         remote_dial_api_key = headers.get(UPSTREAM_KEY_HEADER, None)
 
         if not remote_dial_api_key:
@@ -99,13 +90,6 @@ class AzureClient(BaseModel):
 
             remote_dial_api_key = local_dial_api_key
 
-        endpoint_suffix = f"/{upstream_endpoint_name}"
-        if not upstream_endpoint.endswith(endpoint_suffix):
-            raise InvalidRequestError(
-                f"The {UPSTREAM_ENDPOINT_HEADER!r} request header must end with {endpoint_suffix!r}"
-            )
-        upstream_endpoint = upstream_endpoint.removesuffix(endpoint_suffix)
-
         extra_upstream_headers = {
             key: val
             for key in HEADERS_TO_PROXY
@@ -113,7 +97,7 @@ class AzureClient(BaseModel):
         }
 
         client = AsyncAzureOpenAI(
-            base_url=upstream_endpoint,
+            base_url=dial_endpoint.azure_base_url,
             api_key=remote_dial_api_key,
             # NOTE: defaulting missing api-version to an empty string, because
             # 1. openai library doesn't allow for a missing api-version
@@ -126,6 +110,8 @@ class AzureClient(BaseModel):
             default_headers=extra_upstream_headers,
             http_client=get_http_client(),
         )
+
+        dial_client = client.copy(base_url=dial_endpoint.dial_base_url)
 
         attachment_transformer = await AttachmentTransformer.create(
             local_storage=FileStorage(
@@ -140,6 +126,7 @@ class AzureClient(BaseModel):
 
         return cls(
             client=client,
+            dial_client=dial_client,
             attachment_transformer=attachment_transformer,
         )
 
@@ -149,8 +136,8 @@ for endpoint in ["configuration"]:
     @app.get(f"/{endpoint}")
     @app.get("/openai/deployments/{deployment_id:path}/" + endpoint)
     async def get_endpoint_proxy(request: Request, endpoint=endpoint):
-        az_client = await AzureClient.parse(request, "chat/completions")
-        return await az_client.client.get(path=endpoint, cast_to=dict)
+        az_client = await AzureClient.parse(request)
+        return await az_client.dial_client.get(path=endpoint, cast_to=dict)
 
 
 for endpoint in ["tokenize", "truncate_prompt"]:
@@ -158,9 +145,9 @@ for endpoint in ["tokenize", "truncate_prompt"]:
     @app.post(f"/{endpoint}")
     @app.post("/openai/deployments/{deployment_id:path}/" + endpoint)
     async def post_endpoint_proxy(request: Request, endpoint=endpoint):
-        az_client = await AzureClient.parse(request, "chat/completions")
         body = await request.json()
-        return await az_client.client.post(
+        az_client = await AzureClient.parse(request)
+        return await az_client.dial_client.post(
             path=endpoint, cast_to=dict, body=body
         )
 
@@ -169,20 +156,17 @@ for endpoint in ["tokenize", "truncate_prompt"]:
 @app.post("/openai/deployments/{deployment_id:path}/embeddings")
 async def embeddings_proxy(request: Request):
     body = await request.json()
-    az_client = await AzureClient.parse(request, "embeddings")
-
+    az_client = await AzureClient.parse(request)
     response: CreateEmbeddingResponse = await call_with_extra_body(
         az_client.client.embeddings.create, body
     )
-
     return response.to_dict()
 
 
 @app.post("/chat/completions")
 @app.post("/openai/deployments/{deployment_id:path}/chat/completions")
 async def chat_completions_proxy(request: Request):
-
-    az_client = await AzureClient.parse(request, "chat/completions")
+    az_client = await AzureClient.parse(request)
 
     transformer = az_client.attachment_transformer
 
