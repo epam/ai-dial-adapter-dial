@@ -140,6 +140,18 @@ class AzureClient(BaseModel):
         )
 
 
+for endpoint in ["configuration", "tokenize", "truncate_prompt"]:
+
+    @app.post(f"/{endpoint}")
+    @app.post("/openai/deployments/{deployment_id:path}/" + endpoint)
+    async def feature_endpoint_proxy(request: Request):
+        body = await request.json()
+        az_client = await AzureClient.parse(request, endpoint)
+        return await az_client.client.post(
+            path=endpoint, cast_to=dict, body=body
+        )
+
+
 @app.post("/embeddings")
 @app.post("/openai/deployments/{deployment_id:path}/embeddings")
 async def embeddings_proxy(request: Request):
