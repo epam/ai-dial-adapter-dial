@@ -12,20 +12,18 @@ class DialEndpoint(BaseModel):
 
     @classmethod
     def parse(cls, url: str) -> "DialEndpoint":
-        orig_url = url
-
-        u = urlsplit(url)
-        if not u.scheme or not u.netloc:
+        parsed_url = urlsplit(url)
+        if not parsed_url.scheme or not parsed_url.netloc:
             raise InvalidRequestError(
-                f"Upstream endpoint must be an absolute URL: {orig_url!r}"
+                f"Upstream endpoint must be an absolute URL: {url!r}"
             )
 
-        dial_url = f"{u.scheme}://{u.netloc}"
-        segments = [s for s in u.path.split("/") if s]
+        dial_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
+        segments = [s for s in parsed_url.path.split("/") if s]
 
         if segments[0:2] != ["openai", "deployments"]:
             raise InvalidRequestError(
-                f"Cannot parse the upstream endpoint: {orig_url!r}"
+                f"Cannot parse the upstream endpoint: {url!r}"
             )
 
         if segments[-2:] == ["chat", "completions"]:
@@ -36,13 +34,13 @@ class DialEndpoint(BaseModel):
             deployment_segments = segments[2:-1]
         else:
             raise InvalidRequestError(
-                f"The upstream endpoint {orig_url!r} is expected to end with "
+                f"The upstream endpoint {url!r} is expected to end with "
                 f"'/chat/completions' or '/embeddings'."
             )
 
         if not deployment_segments:
             raise InvalidRequestError(
-                f"Missing deployment_id in upstream endpoint: {orig_url!r}"
+                f"Missing deployment_id in upstream endpoint: {url!r}"
             )
 
         deployment_id = "/".join(deployment_segments)
