@@ -1,0 +1,32 @@
+data_dir: "/var/tmp/vector"
+
+api:
+  enabled: true
+  address: 0.0.0.0:8686
+
+sinks:
+  http_sink:
+    inputs:
+      - proxy_logs
+    type: http
+    uri: http://analytics:5000/data
+    encoding:
+      codec: "json"
+    request:
+      retry_attempts: 2
+
+  console:
+    inputs:
+      - proxy_logs
+    target: stdout
+    type: console
+    encoding:
+      codec: "json"
+
+sources:
+  proxy_logs:
+    include:
+      - /app/log/*.log
+    max_line_bytes: 100000000
+    oldest_first: true
+    type: file
