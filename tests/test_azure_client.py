@@ -1,11 +1,7 @@
 import pytest
-from aidial_sdk.exceptions import InvalidRequestError
+from aioresponses import aioresponses
 
-from aidial_adapter_dial.app import (
-    UPSTREAM_ENDPOINT_HEADER,
-    UPSTREAM_KEY_HEADER,
-    AzureClient,
-)
+from aidial_adapter_dial.app import UPSTREAM_ENDPOINT_HEADER, AzureClient
 from aidial_adapter_dial.config import AppConfig
 
 
@@ -34,7 +30,7 @@ class _MockRequest:
 
 
 @pytest.mark.asyncio
-async def test_parse_rejects_missing_upstream_key_with_hostname_mismatch():
+async def test_non_normalized_upstream_endpoint_url():
     local_dial_url = "http://dial-core.dial.svc.cluster.local"
     upstream_endpoint = (
         "http://dial-core.dial.svc.cluster.local.:80/"
@@ -50,12 +46,18 @@ async def test_parse_rejects_missing_upstream_key_with_hostname_mismatch():
 
     conf = AppConfig(local_dial_url=local_dial_url, headers_to_proxy=[])
 
-    with pytest.raises(InvalidRequestError) as excinfo:
-        await AzureClient.parse(conf, request)
+    with aioresponses() as mocked:
+        response = {
+            "bucket": "test-bucket",
+            "appdata": "test-bucket/appdata/xyz",
+        }
+        mocked.get(
+            "http://dial-core.dial.svc.cluster.local.:80/v1/bucket",
+            payload=response,
+        )
+        mocked.get(
+            "http://dial-core.dial.svc.cluster.local/v1/bucket",
+            payload=response,
+        )
 
-    expected_message = (
-        f"Given that {UPSTREAM_KEY_HEADER!r} header is missing, "
-        f"it's expected that hostname of upstream endpoint ({upstream_endpoint!r}) is "
-        f"the same as the local DIAL URL ({local_dial_url!r}) "
-    )
-    assert str(excinfo.value) == expected_message
+        await AzureClient.parse(conf, request)

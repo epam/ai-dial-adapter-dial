@@ -23,6 +23,7 @@ from aidial_adapter_dial.utils.reflection import call_with_extra_body
 from aidial_adapter_dial.utils.sse_stream import to_openai_sse_stream
 from aidial_adapter_dial.utils.storage import FileStorage
 from aidial_adapter_dial.utils.streaming import amap_stream, map_stream
+from aidial_adapter_dial.utils.url import normalize_url
 
 app = FastAPI()
 
@@ -89,10 +90,12 @@ class AzureClient(BaseModel):
         remote_dial_api_key = headers.get(UPSTREAM_KEY_HEADER, None)
 
         if not remote_dial_api_key:
-            if remote_dial_url != conf.local_dial_url:
+            if normalize_url(remote_dial_url) != normalize_url(
+                conf.local_dial_url
+            ):
                 raise InvalidRequestError(
                     f"Given that {UPSTREAM_KEY_HEADER!r} header is missing, "
-                    f"it's expected that hostname of upstream endpoint ({upstream_endpoint!r}) is "
+                    f"it's expected that hostname of the upstream endpoint ({upstream_endpoint!r}) is "
                     f"the same as the local DIAL URL ({conf.local_dial_url!r}) "
                 )
 
