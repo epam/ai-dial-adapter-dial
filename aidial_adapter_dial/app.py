@@ -1,5 +1,6 @@
 import json
 import logging
+from typing import Mapping, Protocol
 
 from aidial_sdk.exceptions import InvalidRequestError
 from aidial_sdk.telemetry.init import init_telemetry
@@ -38,6 +39,16 @@ LOCAL_DIAL_URL = get_env("DIAL_URL")
 HEADERS_TO_PROXY = get_env_list("HEADERS_TO_PROXY", ["Accept"])
 
 
+class _RequestLike(Protocol):
+    @property
+    def headers(self) -> Mapping[str, str]: ...
+
+    @property
+    def query_params(self) -> Mapping[str, str]: ...
+
+    async def body(self) -> bytes: ...
+
+
 class AzureClient(BaseModel):
     client: AsyncAzureOpenAI
     dial_client: AsyncAzureOpenAI
@@ -47,8 +58,8 @@ class AzureClient(BaseModel):
         arbitrary_types_allowed = True
 
     @classmethod
-    async def parse(cls, request: Request) -> "AzureClient":
-        headers = request.headers.mutablecopy()
+    async def parse(cls, request: _RequestLike) -> "AzureClient":
+        headers = request.headers
         query_params = request.query_params
 
         if is_debug:
@@ -82,7 +93,7 @@ class AzureClient(BaseModel):
                     f"the same as the local DIAL URL ({LOCAL_DIAL_URL!r}) "
                 )
 
-            local_dial_api_key = request.headers.get("api-key")
+            local_dial_api_key = headers.get("api-key")
             if not local_dial_api_key:
                 raise InvalidRequestError(
                     "The 'api-key' request header is missing"
