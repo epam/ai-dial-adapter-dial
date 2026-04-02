@@ -41,6 +41,7 @@ respx = "^0.21.1"
 aioresponses = "^0.7.8"
 
 [tool.poetry.group.lint.dependencies]
+pyright = "1.1.324"
 ruff = "0.12.11"
 
 [tool.poetry.group.dev.dependencies]
