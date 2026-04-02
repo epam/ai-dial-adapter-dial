@@ -286,10 +286,9 @@ async def modify_message(
                     for attachment in attachments:
                         await modify_attachment(attachment)
 
-    if content := message.get("content"):
-        if isinstance(content, list):
-            for part in content:
-                await modify_content_part(part)
+    if (content := message.get("content")) and isinstance(content, list):
+        for part in content:
+            await modify_content_part(part)
 
 
 def _is_directory(url: str) -> bool:

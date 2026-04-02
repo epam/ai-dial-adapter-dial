@@ -14,8 +14,8 @@ def get_env_bool(name: str, default: bool = False) -> bool:
     return os.getenv(name, str(default)).lower() == "true"
 
 
-def get_env_list(name: str, default: List[str] = []) -> List[str]:
+def get_env_list(name: str, default: List[str] | None = None) -> List[str]:
     val = os.getenv(name)
     if val is not None:
         return val.split(",")
-    return default
+    return default or []

@@ -176,10 +176,10 @@ async def chat_completions_proxy(request: Request):
     if is_debug:
         log.debug(f"request.body transformed: {body}")
 
-    response: AsyncStream[ChatCompletionChunk] | ChatCompletion = (
-        await call_with_extra_body(
-            az_client.client.chat.completions.create, body
-        )
+    response: (
+        AsyncStream[ChatCompletionChunk] | ChatCompletion
+    ) = await call_with_extra_body(
+        az_client.client.chat.completions.create, body
     )
 
     if isinstance(response, AsyncStream):

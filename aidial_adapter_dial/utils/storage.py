@@ -166,7 +166,9 @@ class FileStorage(BaseModel):
             raise ValueError(f"URL isn't DIAL url: {url!r}")
         url = self.to_abs_url(url)
 
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers=self.headers) as response:
-                response.raise_for_status()
-                return await response.read()
+        async with (
+            aiohttp.ClientSession() as session,
+            session.get(url, headers=self.headers) as response,
+        ):
+            response.raise_for_status()
+            return await response.read()
