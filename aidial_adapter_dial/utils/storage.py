@@ -1,7 +1,8 @@
 import io
 import logging
 import mimetypes
-from typing import Mapping, Optional, TypedDict
+from collections.abc import Mapping
+from typing import TypedDict
 from urllib.parse import urljoin
 
 import aiohttp
@@ -32,7 +33,7 @@ class FileStorage(BaseModel):
     dial_url: str
     api_key: str
 
-    bucket: Optional[Bucket] = None
+    bucket: Bucket | None = None
 
     @property
     def headers(self) -> Mapping[str, str]:
@@ -166,7 +167,9 @@ class FileStorage(BaseModel):
             raise ValueError(f"URL isn't DIAL url: {url!r}")
         url = self.to_abs_url(url)
 
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers=self.headers) as response:
-                response.raise_for_status()
-                return await response.read()
+        async with (
+            aiohttp.ClientSession() as session,
+            session.get(url, headers=self.headers) as response,
+        ):
+            response.raise_for_status()
+            return await response.read()

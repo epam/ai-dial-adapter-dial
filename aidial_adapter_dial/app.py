@@ -1,6 +1,7 @@
 import json
 import logging
-from typing import Mapping, Protocol
+from collections.abc import Mapping
+from typing import Protocol
 
 from aidial_sdk.exceptions import InvalidRequestError
 from aidial_sdk.telemetry.init import init_telemetry
@@ -193,10 +194,10 @@ async def chat_completions_proxy(request: Request):
     if _is_debug:
         _log.debug(f"request.body transformed: {body}")
 
-    response: AsyncStream[ChatCompletionChunk] | ChatCompletion = (
-        await call_with_extra_body(
-            az_client.client.chat.completions.create, body
-        )
+    response: (
+        AsyncStream[ChatCompletionChunk] | ChatCompletion
+    ) = await call_with_extra_body(
+        az_client.client.chat.completions.create, body
     )
 
     if isinstance(response, AsyncStream):
