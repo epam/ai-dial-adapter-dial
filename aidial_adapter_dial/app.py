@@ -1,5 +1,6 @@
 import json
 import logging
+from typing import Mapping, Protocol
 
 from aidial_sdk.exceptions import InvalidRequestError
 from aidial_sdk.telemetry.init import init_telemetry
@@ -11,10 +12,10 @@ from openai.types import CreateEmbeddingResponse
 from openai.types.chat.chat_completion import ChatCompletion
 from openai.types.chat.chat_completion_chunk import ChatCompletionChunk
 
+from aidial_adapter_dial.config import AppConfig
 from aidial_adapter_dial.transformer import AttachmentTransformer
 from aidial_adapter_dial.utils.dial_endpoint import DialEndpoint
 from aidial_adapter_dial.utils.dict import censor_ci_dict
-from aidial_adapter_dial.utils.env import get_env, get_env_list
 from aidial_adapter_dial.utils.exceptions import to_dial_exception
 from aidial_adapter_dial.utils.http_client import get_http_client
 from aidial_adapter_dial.utils.log_config import configure_loggers
@@ -22,20 +23,32 @@ from aidial_adapter_dial.utils.reflection import call_with_extra_body
 from aidial_adapter_dial.utils.sse_stream import to_openai_sse_stream
 from aidial_adapter_dial.utils.storage import FileStorage
 from aidial_adapter_dial.utils.streaming import amap_stream, map_stream
+from aidial_adapter_dial.utils.url import normalize_url
 
 app = FastAPI()
 
 init_telemetry(app, TelemetryConfig())
 configure_loggers()
 
-log = logging.getLogger(__name__)
-is_debug = log.isEnabledFor(logging.DEBUG)
+_log = logging.getLogger(__name__)
+_is_debug = _log.isEnabledFor(logging.DEBUG)
+
+
+_APP_CONFIG = AppConfig.from_env()
+
+
+class _RequestLike(Protocol):
+    @property
+    def headers(self) -> Mapping[str, str]: ...
+
+    @property
+    def query_params(self) -> Mapping[str, str]: ...
+
+    async def body(self) -> bytes: ...
+
 
 UPSTREAM_KEY_HEADER = "X-UPSTREAM-KEY"
 UPSTREAM_ENDPOINT_HEADER = "X-UPSTREAM-ENDPOINT"
-
-LOCAL_DIAL_URL = get_env("DIAL_URL")
-HEADERS_TO_PROXY = get_env_list("HEADERS_TO_PROXY", ["Accept"])
 
 
 class AzureClient(BaseModel):
@@ -47,18 +60,20 @@ class AzureClient(BaseModel):
         arbitrary_types_allowed = True
 
     @classmethod
-    async def parse(cls, request: Request) -> "AzureClient":
-        headers = request.headers.mutablecopy()
+    async def parse(
+        cls, conf: AppConfig, request: _RequestLike
+    ) -> "AzureClient":
+        headers = request.headers
         query_params = request.query_params
 
-        if is_debug:
+        if _is_debug:
             body = await request.body()
-            log.debug(f"request.body: {body}")
+            _log.debug(f"request.body: {body}")
             secret_headers = ["api-key", "authorization", UPSTREAM_KEY_HEADER]
-            log.debug(
+            _log.debug(
                 f"request.headers: {censor_ci_dict(headers, secret_headers)}"
             )
-            log.debug(f"request.params: {query_params}")
+            _log.debug(f"request.params: {query_params}")
 
         local_dial_api_key = headers.get("api-key", None)
         if not local_dial_api_key:
@@ -75,14 +90,16 @@ class AzureClient(BaseModel):
         remote_dial_api_key = headers.get(UPSTREAM_KEY_HEADER, None)
 
         if not remote_dial_api_key:
-            if remote_dial_url != LOCAL_DIAL_URL:
+            if normalize_url(remote_dial_url) != normalize_url(
+                conf.local_dial_url
+            ):
                 raise InvalidRequestError(
                     f"Given that {UPSTREAM_KEY_HEADER!r} header is missing, "
-                    f"it's expected that hostname of upstream endpoint ({upstream_endpoint!r}) is "
-                    f"the same as the local DIAL URL ({LOCAL_DIAL_URL!r}) "
+                    f"it's expected that hostname of the upstream endpoint ({upstream_endpoint!r}) is "
+                    f"the same as the local DIAL URL ({conf.local_dial_url!r}) "
                 )
 
-            local_dial_api_key = request.headers.get("api-key")
+            local_dial_api_key = headers.get("api-key")
             if not local_dial_api_key:
                 raise InvalidRequestError(
                     "The 'api-key' request header is missing"
@@ -92,7 +109,7 @@ class AzureClient(BaseModel):
 
         extra_upstream_headers = {
             key: val
-            for key in HEADERS_TO_PROXY
+            for key in conf.headers_to_proxy
             if (val := headers.get(key)) is not None
         }
 
@@ -115,7 +132,7 @@ class AzureClient(BaseModel):
 
         attachment_transformer = await AttachmentTransformer.create(
             local_storage=FileStorage(
-                dial_url=LOCAL_DIAL_URL,
+                dial_url=conf.local_dial_url,
                 api_key=local_dial_api_key,
             ),
             remote_storage=FileStorage(
@@ -136,7 +153,7 @@ for endpoint in ["configuration"]:
     @app.get(f"/{endpoint}")
     @app.get("/openai/deployments/{deployment_id:path}/" + endpoint)
     async def get_endpoint_proxy(request: Request, endpoint=endpoint):
-        az_client = await AzureClient.parse(request)
+        az_client = await AzureClient.parse(_APP_CONFIG, request)
         return await az_client.dial_client.get(path=endpoint, cast_to=object)
 
 
@@ -146,7 +163,7 @@ for endpoint in ["tokenize", "truncate_prompt"]:
     @app.post("/openai/deployments/{deployment_id:path}/" + endpoint)
     async def post_endpoint_proxy(request: Request, endpoint=endpoint):
         body = await request.json()
-        az_client = await AzureClient.parse(request)
+        az_client = await AzureClient.parse(_APP_CONFIG, request)
         return await az_client.dial_client.post(
             path=endpoint, cast_to=object, body=body
         )
@@ -156,7 +173,7 @@ for endpoint in ["tokenize", "truncate_prompt"]:
 @app.post("/openai/deployments/{deployment_id:path}/embeddings")
 async def embeddings_proxy(request: Request):
     body = await request.json()
-    az_client = await AzureClient.parse(request)
+    az_client = await AzureClient.parse(_APP_CONFIG, request)
     response: CreateEmbeddingResponse = await call_with_extra_body(
         az_client.client.embeddings.create, body
     )
@@ -166,15 +183,15 @@ async def embeddings_proxy(request: Request):
 @app.post("/chat/completions")
 @app.post("/openai/deployments/{deployment_id:path}/chat/completions")
 async def chat_completions_proxy(request: Request):
-    az_client = await AzureClient.parse(request)
+    az_client = await AzureClient.parse(_APP_CONFIG, request)
 
     transformer = az_client.attachment_transformer
 
     body = await request.json()
     body = await transformer.modify_request(body)
 
-    if is_debug:
-        log.debug(f"request.body transformed: {body}")
+    if _is_debug:
+        _log.debug(f"request.body transformed: {body}")
 
     response: (
         AsyncStream[ChatCompletionChunk] | ChatCompletion
@@ -186,8 +203,8 @@ async def chat_completions_proxy(request: Request):
 
         async def modify_chunk(chunk: dict) -> dict:
             chunk = await transformer.modify_response_chunk(chunk)
-            if is_debug:
-                log.debug(f"chunk: {json.dumps(chunk)}")
+            if _is_debug:
+                _log.debug(f"chunk: {json.dumps(chunk)}")
             return chunk
 
         chunk_stream = map_stream(lambda obj: obj.to_dict(), response)
@@ -198,8 +215,8 @@ async def chat_completions_proxy(request: Request):
     else:
         resp = response.to_dict()
         resp = await transformer.modify_response(resp)
-        if is_debug:
-            log.debug(f"response: {json.dumps(resp)}")
+        if _is_debug:
+            _log.debug(f"response: {json.dumps(resp)}")
         return resp
 
 
@@ -207,7 +224,7 @@ async def chat_completions_proxy(request: Request):
 def exception_handler(request: Request, e: Exception):
     dial_exception = to_dial_exception(e)
 
-    log.exception(
+    _log.exception(
         f"Caught exception: {type(e).__module__}.{type(e).__name__}. "
         f"The exception converted to the dial exception: {dial_exception!r}."
     )
