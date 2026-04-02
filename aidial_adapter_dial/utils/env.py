@@ -1,8 +1,7 @@
 import os
-from typing import List, Optional
 
 
-def get_env(name: str, err_msg: Optional[str] = None) -> str:
+def get_env(name: str, err_msg: str | None = None) -> str:
     val = os.getenv(name)
     if val is not None:
         return val
@@ -14,7 +13,7 @@ def get_env_bool(name: str, default: bool = False) -> bool:
     return os.getenv(name, str(default)).lower() == "true"
 
 
-def get_env_list(name: str, default: List[str] | None = None) -> List[str]:
+def get_env_list(name: str, default: list[str] | None = None) -> list[str]:
     val = os.getenv(name)
     if val is not None:
         return val.split(",")

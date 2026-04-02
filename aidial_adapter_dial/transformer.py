@@ -1,6 +1,7 @@
 import logging
 import re
-from typing import Any, Callable, Coroutine, Self
+from collections.abc import Callable, Coroutine
+from typing import Any, Self
 
 import aiohttp
 from openai.types.chat.chat_completion_content_part_param import (

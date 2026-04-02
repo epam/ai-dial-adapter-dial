@@ -74,7 +74,8 @@ select = [
     "F",    # pyflakes
     "I",    # flake8-isort
     "S",    # flake8-bandit
-    "FURB", # refurb
+    "FURB", # refurb,
+    "UP",   # pyupgrade
 ]
 ignore = [
     "E501", # string literal is too long

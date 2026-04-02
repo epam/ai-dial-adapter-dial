@@ -1,6 +1,7 @@
 import json
 import logging
-from typing import Any, AsyncIterator, Mapping
+from collections.abc import AsyncIterator, Mapping
+from typing import Any
 
 from aidial_adapter_dial.utils.exceptions import (
     to_dial_exception,
