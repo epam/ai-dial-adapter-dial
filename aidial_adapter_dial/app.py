@@ -1,6 +1,7 @@
 import json
 import logging
-from typing import Mapping, Protocol
+from collections.abc import Mapping
+from typing import Protocol
 
 from aidial_sdk.exceptions import InvalidRequestError
 from aidial_sdk.telemetry.init import init_telemetry
