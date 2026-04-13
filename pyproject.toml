@@ -34,7 +34,7 @@ pydantic = "1.10.13"
 aidial-sdk = { version = "0.16.0", extras = ["telemetry"] }
 
 [tool.poetry.group.test.dependencies]
-pytest = "7.4.0"
+pytest = "9.0.3"
 pytest-asyncio = "0.21.1"
 python-dotenv = "1.0.0"
 respx = "^0.21.1"
