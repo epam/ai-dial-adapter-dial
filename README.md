@@ -2,7 +2,7 @@
 
 ## Overview
 
-The project implements application which adapts calls from one DIAL Core to calls to another DIAL Core.
+The project implements application which adapts calls from one DIAL Core to calls to another DIAL Core
 
 Useful for local DIAL development against remote DIAL Core.
 See the [example](./docker-compose/local/README.md) of such a setup.
