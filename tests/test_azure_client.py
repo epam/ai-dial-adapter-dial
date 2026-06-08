@@ -1,5 +1,4 @@
-import pytest
-from aioresponses import aioresponses
+from aiointercept import aiointercept
 
 from aidial_adapter_dial.app import UPSTREAM_ENDPOINT_HEADER, AzureClient
 from aidial_adapter_dial.config import AppConfig
@@ -29,7 +28,6 @@ class _MockRequest:
         return self._body
 
 
-@pytest.mark.asyncio
 async def test_non_normalized_upstream_endpoint_url():
     local_dial_url = "http://dial-core.dial.svc.cluster.local"
     upstream_endpoint = (
@@ -46,18 +44,15 @@ async def test_non_normalized_upstream_endpoint_url():
 
     conf = AppConfig(local_dial_url=local_dial_url, headers_to_proxy=[])
 
-    with aioresponses() as mocked:
+    async with aiointercept(mock_external_urls=True) as mocked:
         response = {
             "bucket": "test-bucket",
             "appdata": "test-bucket/appdata/xyz",
         }
         mocked.get(
-            "http://dial-core.dial.svc.cluster.local.:80/v1/bucket",
-            payload=response,
-        )
-        mocked.get(
             "http://dial-core.dial.svc.cluster.local/v1/bucket",
             payload=response,
+            repeat=2,
         )
 
         await AzureClient.parse(conf, request)
