@@ -12,6 +12,7 @@ from openai import AsyncAzureOpenAI, AsyncStream, BaseModel
 from openai.types import CreateEmbeddingResponse
 from openai.types.chat.chat_completion import ChatCompletion
 from openai.types.chat.chat_completion_chunk import ChatCompletionChunk
+from pydantic import ConfigDict
 
 from aidial_adapter_dial.config import AppConfig
 from aidial_adapter_dial.transformer import AttachmentTransformer
@@ -57,8 +58,7 @@ class AzureClient(BaseModel):
     dial_client: AsyncAzureOpenAI
     attachment_transformer: AttachmentTransformer
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @classmethod
     async def parse(

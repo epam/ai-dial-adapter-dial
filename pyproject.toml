@@ -26,16 +26,16 @@ clean = "scripts.clean:main"
 package-mode = false
 
 [tool.poetry.dependencies]
-fastapi = "0.120.2"
+fastapi = "0.136.3"
 uvicorn = "0.23.0"
 aiohttp = "3.13.4"
 openai = "1.32.0"
-pydantic = "1.10.13"
+pydantic = "2.9.0"
 aidial-sdk = { version = "0.16.0", extras = ["telemetry"] }
 
 [tool.poetry.group.test.dependencies]
 pytest = "9.0.3"
-pytest-asyncio = "^1.0.0"
+pytest-asyncio = "1.3.0"
 python-dotenv = "1.2.2"
 respx = "^0.21.1"
 aiointercept = "^0.1.5"
@@ -52,6 +52,7 @@ pre-commit = "^4.5.1"
 addopts = "--asyncio-mode=auto"
 testpaths = ["tests"]
 filterwarnings = [
+    "error",
     # muting warnings coming from opentelemetry package
     "ignore::DeprecationWarning:opentelemetry.instrumentation.dependencies",
 ]
