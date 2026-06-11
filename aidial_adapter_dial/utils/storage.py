@@ -2,11 +2,11 @@ import io
 import logging
 import mimetypes
 from collections.abc import Mapping
-from typing import TypedDict
 from urllib.parse import urljoin
 
 import aiohttp
 from pydantic import BaseModel
+from typing_extensions import TypedDict
 
 log = logging.getLogger(__name__)
 
