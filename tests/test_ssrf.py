@@ -214,11 +214,11 @@ async def test_download_public_file_sends_no_credentials(fake_http):
         "http://dial-core@2130706433/v1/files/bucket/secret",
     ],
 )
-async def test_prefix_lookalike_is_untrusted_and_rejected(link: str):
+async def test_prefix_lookalike_is_rejected(link: str):
     storage = FileStorage(dial_url="http://dial-core", api_key="secret")
 
-    # A non-DIAL origin must be treated as untrusted and SSRF-validated,
-    # so a non-public target is rejected before any request (and the api-key
-    # is never sent).
-    with pytest.raises(InvalidRequestError, match="non-public address"):
+    # A prefix look-alike merely starts with the base URL string but its real
+    # host differs, so it is not recognised as a genuine DIAL URL. It is
+    # rejected before any request is made and the api-key is never sent.
+    with pytest.raises(ValueError, match="isn't DIAL url"):
         await storage.download(link, session=None)  # type: ignore[arg-type]
