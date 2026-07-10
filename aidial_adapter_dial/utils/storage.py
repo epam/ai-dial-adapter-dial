@@ -8,6 +8,8 @@ import aiohttp
 from pydantic import BaseModel
 from typing_extensions import TypedDict
 
+from aidial_adapter_dial.utils.url import has_same_origin
+
 log = logging.getLogger(__name__)
 
 
@@ -163,9 +165,18 @@ class FileStorage(BaseModel):
     async def download(self, url: str, session: aiohttp.ClientSession) -> bytes:
         log.debug(f"downloading file {url!r}")
 
-        if self.to_dial_url(url) is None:
-            raise ValueError(f"URL isn't DIAL url: {url!r}")
         url = self.to_abs_url(url)
+
+        # The adapter only ever downloads files from its own DIAL storage; any
+        # other URL is left untouched and passed through to the remote DIAL,
+        # never fetched here. The api-key is therefore only ever sent to the
+        # DIAL origin. Trust is decided by origin (scheme/host/port), never by
+        # string prefix: a URL like ``http://<dial_url>@169.254.169.254`` or
+        # ``http://<dial_url>.attacker.example`` shares the base-URL prefix yet
+        # resolves to a different, internal host - a prefix check would treat
+        # it as a DIAL URL and leak the api-key to an attacker-controlled host.
+        if not has_same_origin(url, self.dial_url):
+            raise ValueError(f"URL isn't DIAL url: {url!r}")
 
         async with (
             aiohttp.ClientSession() as session,
