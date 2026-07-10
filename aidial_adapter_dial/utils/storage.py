@@ -8,10 +8,7 @@ import aiohttp
 from pydantic import BaseModel
 from typing_extensions import TypedDict
 
-from aidial_adapter_dial.utils.url import (
-    download_public_file,
-    has_same_origin,
-)
+from aidial_adapter_dial.utils.url import has_same_origin
 
 log = logging.getLogger(__name__)
 
@@ -168,26 +165,22 @@ class FileStorage(BaseModel):
     async def download(self, url: str, session: aiohttp.ClientSession) -> bytes:
         log.debug(f"downloading file {url!r}")
 
-        if self.to_dial_url(url) is None:
-            raise ValueError(f"URL isn't DIAL url: {url!r}")
         url = self.to_abs_url(url)
 
-        # DIAL Core is trusted infrastructure: when the URL resolves to its
-        # origin, fetch it directly with the api-key. The storage may
-        # legitimately live on a private address, so SSRF checks would be
-        # counterproductive here. The origin is matched by scheme/host/port,
-        # never by string prefix: a URL like
-        # ``http://<dial_url>@169.254.169.254`` shares the base-URL prefix yet
+        # The adapter only ever downloads files from its own DIAL storage; any
+        # other URL is left untouched and passed through to the remote DIAL,
+        # never fetched here. The api-key is therefore only ever sent to the
+        # DIAL origin. Trust is decided by origin (scheme/host/port), never by
+        # string prefix: a URL like ``http://<dial_url>@169.254.169.254`` or
+        # ``http://<dial_url>.attacker.example`` shares the base-URL prefix yet
         # resolves to a different, internal host - a prefix check would treat
-        # it as trusted, skip SSRF validation and leak the api-key.
-        if has_same_origin(url, self.dial_url):
-            async with (
-                aiohttp.ClientSession() as session,
-                session.get(url, headers=self.headers) as response,
-            ):
-                response.raise_for_status()
-                return await response.read()
+        # it as a DIAL URL and leak the api-key to an attacker-controlled host.
+        if not has_same_origin(url, self.dial_url):
+            raise ValueError(f"URL isn't DIAL url: {url!r}")
 
-        # Any other (attacker-controllable) URL is validated against SSRF and
-        # never receives credentials.
-        return await download_public_file(url)
+        async with (
+            aiohttp.ClientSession() as session,
+            session.get(url, headers=self.headers) as response,
+        ):
+            response.raise_for_status()
+            return await response.read()
