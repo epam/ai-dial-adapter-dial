@@ -5,8 +5,6 @@ from logging import Filter, LogRecord
 
 from aidial_sdk import configure_root_logger
 
-LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
-
 
 class HealthCheckFilter(Filter):
     def filter(self, record: LogRecord):
@@ -14,6 +12,10 @@ class HealthCheckFilter(Filter):
 
 
 def configure_loggers():
+    # By default (in prod) we don't want to print debug messages,
+    # because they typically contain prompts.
+    app_log_level = os.getenv("LOG_LEVEL", "INFO")
+
     configure_root_logger()
 
     # Filter out health check requests from uvicorn logs
@@ -21,4 +23,4 @@ def configure_loggers():
 
     # Setting up log levels
     for name in ["aidial_adapter_dial", "uvicorn"]:
-        logging.getLogger(name).setLevel(LOG_LEVEL)
+        logging.getLogger(name).setLevel(app_log_level)
