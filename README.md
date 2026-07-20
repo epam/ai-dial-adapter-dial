@@ -71,10 +71,36 @@ Copy `.env.example` to `.env` and customize it for your environment:
 
 |Variable|Default|Description|
 |---|---|---|
-|LOG_LEVEL|INFO|Log level. Use DEBUG for dev purposes and INFO in prod|
+|LOG_LEVEL|INFO|Application log level. Use DEBUG for dev purposes and INFO in prod|
 |WEB_CONCURRENCY|1|Number of workers for the server|
 |DIAL_URL||URL of the **local** DIAL Core server used for development|
 |HEADERS_TO_PROXY|`Accept`|Comma-separated list of headers to pass through to the upstream.|
+
+### Logging
+
+Logging is provided by the DIAL SDK. The `LOG_LEVEL` variable sets the severity threshold for the adapter's logs (`INFO` by default; use `DEBUG` for development).
+
+By default logs are emitted as human-readable text.
+Set `DIAL_SDK_LOG_FORMAT=json` for structured JSON logging.
+The format is controlled by `DIAL_SDK_TEXT_LOG_FORMAT` / `DIAL_SDK_JSON_LOG_FORMAT` (both optional),
+which use Python's `%`-style [logging attributes](https://docs.python.org/3/library/logging.html#logrecord-attributes)
+and default to the values shown below.
+
+Text logging (default):
+
+```txt
+DIAL_SDK_LOG_FORMAT=text
+DIAL_SDK_TEXT_LOG_FORMAT='%(levelprefix)s | %(asctime)s | %(name)s | %(process)d | %(message)s'
+```
+
+Structured JSON logging:
+
+```txt
+DIAL_SDK_LOG_FORMAT=json
+DIAL_SDK_JSON_LOG_FORMAT='{"level": "%(levelname)s", "time": "%(asctime)s", "logger": "%(name)s", "process": "%(process)d", "message": "%(message)s"}'
+```
+
+See the [full logging documentation](https://github.com/epam/ai-dial-sdk/blob/0.38.0/docs/logging.md) for details.
 
 ### Docker
 
