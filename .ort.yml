@@ -1,4 +1,6 @@
 ---
+analyzer:
+  skip_excluded: true
 excludes:
   scopes:
     - pattern: "dev"
@@ -10,21 +12,3 @@ excludes:
     - pattern: "test"
       reason: "TEST_DEPENDENCY_OF"
       comment: "Packages for testing only."
-license_choices:
-  repository_license_choices:
-    - given: FTL OR GPL-2.0-or-later
-      choice: FTL
-resolutions:
-  rule_violations:
-    - message: ".*PyPI::setuptools:78\\.1\\.1.*"
-      reason: "CANT_FIX_EXCEPTION"
-      comment: "BSD 3-Clause New or Revised License: https://github.com/pypa/setuptools/blob/v78.1.1/LICENSE"
-    - message: ".*PyPI::httpcore:1\\.0\\.9.*"
-      reason: "CANT_FIX_EXCEPTION"
-      comment: "BSD 3-Clause New or Revised License: https://github.com/encode/httpcore/blob/1.0.9/LICENSE.md"
-    - message: ".*PyPI::httpx:0\\.28\\.1.*"
-      reason: "CANT_FIX_EXCEPTION"
-      comment: "BSD 3-Clause New or Revised License: https://github.com/encode/httpx/blob/0.28.1/LICENSE.md"
-    - message: ".*PyPI::(opentelemetry|typing-extensions|typing-inspection|idna|starlette|fastapi|aidial-sdk).*"
-      reason: "CANT_FIX_EXCEPTION"
-      comment: "ORT cannot pickup license"
