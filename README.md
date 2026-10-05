@@ -73,8 +73,25 @@ Copy `.env.example` to `.env` and customize it for your environment:
 |---|---|---|
 |LOG_LEVEL|INFO|Application log level. Use DEBUG for dev purposes and INFO in prod|
 |WEB_CONCURRENCY|1|Number of workers for the server|
+|TIMEOUT_KEEP_ALIVE|70|How long in seconds the server keeps an idle HTTP keep-alive connection open before closing it. Must be greater than the caller's pooled-connection timeout — see [Keep-alive timeout](#keep-alive-timeout)|
 |DIAL_URL||URL of the **local** DIAL Core server used for development|
 |HEADERS_TO_PROXY|`Accept`|Comma-separated list of headers to pass through to the upstream.|
+
+### Keep-alive timeout
+
+`TIMEOUT_KEEP_ALIVE` is passed to uvicorn as [`--timeout-keep-alive`](https://www.uvicorn.org/settings/#timeouts). It sets how long, in seconds, the adapter keeps an idle HTTP keep-alive connection open before closing it.
+
+The caller must give up on an idle connection *before* the adapter closes it. On the DIAL Core side the matching setting is `client.keepAliveTimeout` — the [Vert.x HTTP client option](https://vertx.io/docs/apidocs/io/vertx/core/http/HttpClientOptions.html) that controls how long Core keeps an idle connection in its pool. It is also expressed in seconds and defaults to **60**.
+
+**Keep `TIMEOUT_KEEP_ALIVE` at DIAL Core's `client.keepAliveTimeout` plus 10 seconds:**
+
+|DIAL Core `client.keepAliveTimeout`|`TIMEOUT_KEEP_ALIVE`|
+|---|---|
+|60 _(default)_|70 _(default)_|
+
+The default of 70 already covers an unmodified DIAL Core, so change it only if you have changed `client.keepAliveTimeout`.
+
+Note that uvicorn's own default of 5 seconds is **not** safe here. The adapter would close idle connections long before Core expires them; Core would eventually hand a request to a connection the adapter had already closed; and that request — written into a half-closed socket and never read — would fail with `Connection was closed`. The 10 second margin keeps Core the side that always closes first, which removes the race.
 
 ### Logging
 
