@@ -76,6 +76,9 @@ Copy `.env.example` to `.env` and customize it for your environment:
 |TIMEOUT_KEEP_ALIVE|70|How long in seconds the server keeps an idle HTTP keep-alive connection open before closing it. Must be greater than the caller's pooled-connection timeout — see [Keep-alive timeout](#keep-alive-timeout)|
 |DIAL_URL||URL of the **local** DIAL Core server used for development|
 |HEADERS_TO_PROXY|`Accept`|Comma-separated list of headers to pass through to the upstream.|
+|HTTP_MAX_CONNECTIONS|1000|Maximum number of concurrent connections the upstream HTTP client opens. Requests above the limit wait for a free connection|
+|HTTP_MAX_KEEPALIVE_CONNECTIONS|100|Maximum number of idle connections the upstream HTTP client keeps open for reuse|
+|HTTP_POOL_TIMEOUT|10|How long in seconds a request waits for a free upstream connection when `HTTP_MAX_CONNECTIONS` is reached. On timeout the adapter returns 503|
 
 ### Keep-alive timeout
 
