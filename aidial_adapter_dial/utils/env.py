@@ -13,6 +13,10 @@ def get_env_bool(name: str, default: bool = False) -> bool:
     return os.getenv(name, str(default)).lower() == "true"
 
 
+def get_env_int(name: str, default: int) -> int:
+    return int(os.getenv(name, str(default)))
+
+
 def get_env_list(name: str, default: list[str] | None = None) -> list[str]:
     val = os.getenv(name)
     if val is not None:

@@ -2,10 +2,13 @@ import dataclasses
 import logging
 from typing import Any
 
+import httpx
 from aidial_sdk.exceptions import HTTPException as DialException
 from fastapi.responses import JSONResponse as FastAPIResponse
 from httpx import Headers
 from openai import APIConnectionError, APIStatusError, APITimeoutError
+
+from aidial_adapter_dial.utils.http_client import HTTP_MAX_CONNECTIONS
 
 log = logging.getLogger(__name__)
 
@@ -52,6 +55,16 @@ def to_dial_exception(exc: Exception) -> DialException | ResponseWrapper:
             status_code=r.status_code,
             headers=headers,
             content=content,
+        )
+
+    if isinstance(exc, httpx.PoolTimeout) or isinstance(
+        exc.__cause__, httpx.PoolTimeout
+    ):
+        return DialException(
+            status_code=503,
+            type="internal_server_error",
+            message="No free upstream connection: the adapter connection pool "
+            f"is exhausted (HTTP_MAX_CONNECTIONS={HTTP_MAX_CONNECTIONS})",
         )
 
     if isinstance(exc, APITimeoutError):
