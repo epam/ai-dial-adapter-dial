@@ -31,6 +31,9 @@ RUN pip install wheel==0.46.2
 # vendored copies of msgpack, urllib3 and pkg_resources (setuptools 70.3.0, not the
 # standalone setuptools installed above). Must stay after the last pip usage.
 RUN pip uninstall -y pip
+# the pip wheel bundled with ensurepip is a file, not an installed package, so it survives the uninstall
+# fix CVE-2025-8869, CVE-2026-1703, CVE-2026-3219, CVE-2026-6357, CVE-2026-8643, CVE-2026-13346
+RUN rm -f /usr/local/lib/python3.11/ensurepip/_bundled/pip-*.whl
 # fix CVE-2025-6965 and CVE-2026-22184 and CVE-2026-40200
 RUN apk upgrade --no-cache sqlite-libs zlib musl musl-utils
 # fix CVE-2026-53612, CVE-2026-53613, CVE-2026-53614, CVE-2026-76642, CVE-2026-78408, CVE-2026-78409, CVE-2026-78410
